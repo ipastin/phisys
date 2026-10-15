@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — утверждённый scope M0 Foundation
 created: "15-10-26 12-28-44"
-updated: "15-10-26 13-15-25"
+updated: "15-10-26 13-34-06"
 timezone: Europe/Moscow
-version: 0.3.0
-commit: "docs(plan): approve M0 scope with deferred start"
+version: 0.3.1
+commit: "docs(plan): specify executable M0 acceptance checks"
 status: approved
 ---
 
@@ -25,7 +25,7 @@ status: approved
 
 ## Контекст и источники
 
-- [Onboarding audit](../../docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-audit.md) — входная доказательная база.
+- [Onboarding audit](../../docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-34-06__v0.3.1__docs-audit.md) — входная доказательная база.
 - Актуальные packs: [Project Spec 0.4.0](../../docs/project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md)
   и [Design Spec 0.2.0](../../docs/product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md).
 - Plan contract: [.agent/PLANS.md](../PLANS.md). Прежний [M0 template](M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md) остаётся историческим; его ожидание ещё не слитого docs PR опровергнуто текущим checkout.
@@ -64,7 +64,7 @@ M0 fixture graph содержит только искусственные тех
 | dependency-cruiser | `18.6.0` | [npm metadata](https://registry.npmjs.org/dependency-cruiser/18.6.0) и [документация правил/alias](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md); заявлена совместимость с Node 24. |
 | Gitleaks CLI | `8.30.1` | [Официальный release и binary checksums](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1); checksum для CI platform закрепить при workflow implementation. |
 
-Для CI в scope входят [actions/checkout `v7.0.1`](https://github.com/actions/checkout/releases/tag/v7.0.1), [pnpm/setup `v3.1.1`](https://github.com/pnpm/setup/releases/tag/v3.1.1), точные Node `24.22.0` и pnpm `12.13.0`. При создании workflow закрепить immutable action SHAs и проверить release commits. CI runner и fork-PR behavior — `not_run`.
+Для CI в scope входят [actions/checkout `v7.0.1`](https://github.com/actions/checkout/releases/tag/v7.0.1), [pnpm/setup `v3.1.1`](https://github.com/pnpm/setup/releases/tag/v3.1.1), точные Node `24.22.0` и pnpm `12.13.0`. `pnpm/setup` устанавливает оба runtime; задать `runtime: node@24.22.0`, `version: 12.13.0`, `install: false`, затем явно выполнить frozen install. Для полного Git history scan checkout должен использовать `fetch-depth: 0`. При создании workflow закрепить immutable action SHAs и проверить release commits. CI runner и fork-PR behavior — `not_run`.
 
 ## Файлы и зависимости
 
@@ -83,7 +83,7 @@ M0 fixture graph содержит только искусственные тех
 
 1. **M0.0 — ожидание старта:** полный scope согласован; M0.1 не начинать до отдельной команды владельца. При старте перепроверить `origin/main` SHA, branch protection и совместимость pins.
 2. **M0.1 — workspace:** pin Node/pnpm/dependencies, создать lockfile и непустой guardrails package. `pnpm install --frozen-lockfile` не должен менять lockfile.
-3. **M0.2 — graph:** реализовать import rules через dependency-cruiser, strict TypeScript, Vitest allowed/forbidden cases и реальный build output. Forbidden edge в negative corpus должен давать ненулевой exit.
+3. **M0.2 — graph:** реализовать import rules через dependency-cruiser, strict TypeScript, Vitest allowed/forbidden cases и реальный build output. Forbidden edge в negative corpus должен давать ненулевой exit; тот же checker должен проверить first-party source graph текущего checkout.
 4. **M0.3 — CI:** запустить те же checks на SHA PR; проверить fork PR с read-only permissions, без deploy и product secrets.
 5. **M0.4 — review:** проверить diff, evidence и отсутствие out-of-scope изменений; открыть reviewable PR. Merge — отдельное действие. Для M1 нужен собственный plan после принятия M0.
 
@@ -97,10 +97,10 @@ M0 fixture graph содержит только искусственные тех
 | `pnpm install --frozen-lockfile` | Fresh install без lockfile diff. | `not_run` |
 | `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | Scoped first-party source/config проходят; TS strict. | `not_run` |
 | `pnpm test:unit` | Реальные assertions для guardrails logic. | `not_run` |
-| `pnpm test:architecture` | Allowed graph проходит, forbidden workspace/alias/relative edges отклоняются; тест не зависит от наличия будущих domain packages. | `not_run` |
+| `pnpm test:architecture` | Allowed graph проходит, forbidden workspace/alias/relative edges отклоняются; тот же checker проверяет текущий first-party source graph; тест не зависит от наличия будущих domain packages. | `not_run` |
 | `pnpm test`, `pnpm build` | Запускают непустые targets; build artifact используется checker. | `not_run` |
 | `pnpm audit --audit-level high` | Нет неразобранных high/critical advisories; ошибка registry не считается pass. | `not_run` |
-| `gitleaks git . --redact` | Нет secret findings в Git history; CLI `8.30.1`. | `not_run` |
+| `gitleaks git . --redact` | Нет secret findings в полном Git history; CLI `8.30.1`, CI checkout с `fetch-depth: 0`. | `not_run` |
 | `git diff --check` | Нет whitespace errors в изменённых first-party files. | `not_run` для implementation diff |
 | PR CI на том же SHA | Local и CI checks совпадают, read-only token, без deploy. | `not_run` |
 

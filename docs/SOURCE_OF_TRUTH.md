@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Source of Truth
 created: "15-10-26 09-37-26"
-updated: "15-10-26 13-15-25"
+updated: "15-10-26 13-34-06"
 timezone: Europe/Moscow
-version: 0.2.6
-commit: "docs(sources): link approved M0 plan"
+version: 0.2.7
+commit: "docs(sources): link reviewed M0 plan"
 status: proposed
 ---
 
@@ -128,5 +128,5 @@ M5 Hardening: provenance/audit/security/evals/export/delete → Personal Beta ga
 - [ExecPlan contract](../.agent/PLANS.md) — lifecycle, metadata и evidence.
 - [Onboarding prompt](../prompts/CODEX_ONBOARDING__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-prompt.md) — read-only первый chat.
 - [M0 Foundation template](../.agent/plans/M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md) — template для review, не реализованный milestone.
-- [M0 onboarding audit](M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-audit.md) — checkout/source evidence и открытые решения.
-- [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-plan.md) — утверждённый scope/toolchain/checks; старт implementation отложен владельцем.
+- [M0 onboarding audit](M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-34-06__v0.3.1__docs-audit.md) — checkout/source evidence и открытые решения.
+- [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-34-06__v0.3.1__docs-plan.md) — утверждённый scope/toolchain/checks; старт implementation отложен владельцем.
