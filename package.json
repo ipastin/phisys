@@ -2,6 +2,7 @@
   "name": "myphisys",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "packageManager": "pnpm@12.13.0",
   "engines": {
     "node": "24.22.0",
@@ -10,8 +11,8 @@
   "scripts": {
     "build": "turbo run build",
     "lint": "eslint packages/architecture-guardrails/src packages/architecture-guardrails/test tests/architecture",
-    "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig.json eslint.config.mjs .prettierrc.json .github/workflows/ci.yml packages/architecture-guardrails/package.json packages/architecture-guardrails/tsconfig.json packages/architecture-guardrails/src packages/architecture-guardrails/test tests/architecture",
-    "typecheck": "turbo run typecheck",
+    "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig.json tsconfig.tests.json eslint.config.mjs .prettierrc.json .github/workflows/ci.yml packages/architecture-guardrails/package.json packages/architecture-guardrails/tsconfig.json packages/architecture-guardrails/src packages/architecture-guardrails/test tests/architecture",
+    "typecheck": "turbo run typecheck && tsc -p tsconfig.tests.json",
     "test:unit": "turbo run test:unit",
     "test:architecture": "pnpm build && vitest run tests/architecture",
     "test": "pnpm test:unit && pnpm test:architecture"
