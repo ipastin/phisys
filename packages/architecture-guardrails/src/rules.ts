@@ -2,8 +2,6 @@ import type { IForbiddenRuleType } from 'dependency-cruiser';
 
 const packagePath = (name: string) =>
   `(?:^|/)packages/(?:${name})/|^@myphisys/(?:${name})(?:/|$)`;
-const nonCorePackagePath =
-  '(?:^|/)packages/(?!(?:health-core|contracts)/)[^/]+/|^@myphisys/(?!(?:health-core|contracts)(?:/|$))[^/]+(?:/|$)';
 
 // shortcut: patterns cover the five approved provider paths; extend them when a new provider is approved.
 const providerPackage =
@@ -16,7 +14,8 @@ export const forbidden: IForbiddenRuleType[] = [
     severity: 'error',
     from: { path: packagePath('health-core') },
     to: {
-      path: `${nonCorePackagePath}|${providerPath}|(?:^|/)node_modules/(?:@supabase/|react(?:-native)?(?:/|$)|expo(?:/|$))|^(?:@supabase/|react(?:-native)?(?:/|$)|expo(?:/|$))`,
+      pathNot:
+        '(?:^|/)packages/(?:health-core|contracts)/|^@myphisys/(?:health-core|contracts)(?:/|$)',
     },
   },
   {
