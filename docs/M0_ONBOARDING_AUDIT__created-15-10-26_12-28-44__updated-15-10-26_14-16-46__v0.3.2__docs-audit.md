@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — onboarding audit для review M0 plan
 created: "15-10-26 12-28-44"
-updated: "15-10-26 13-34-06"
+updated: "15-10-26 14-16-46"
 timezone: Europe/Moscow
-version: 0.3.1
-commit: "docs(audit): distinguish import checks from domain invariants"
+version: 0.3.2
+commit: "docs(audit): include agent isolation and M5 gate"
 status: complete
 ---
 
@@ -14,7 +14,7 @@ status: complete
 
 Это read-only audit как доказательная база для отдельного review M0 plan. Он не даёт разрешения на реализацию, установку dependencies, merge или deploy. Ниже сначала перечислены проверенные границы, затем открытые решения и условия перехода к M0.
 
-Отдельный [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-34-06__v0.3.1__docs-plan.md) использует этот audit как вход. Импортированные source packs остаются без изменений.
+Отдельный [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) использует этот audit как вход. Импортированные source packs остаются без изменений.
 
 ## Checkout и источники
 
@@ -39,7 +39,7 @@ Raw, Canonical, Derived и Inferred — разные planes. Архитекту�
 и workers; PostgreSQL — system of record. [Project `02 ARCHITECTURE`, §§1–5, 10](project-spec/v0.4.0/02_ARCHITECTURE__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md);
 [Project `03 DATA_MODEL`, §§1–4](project-spec/v0.4.0/03_DATA_MODEL__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md).
 
-Ниже перечислены архитектурные и продуктовые invariants для M0→M2. M0 boundary checker проверяет только запрещённые import edges на synthetic graph и в текущем repository graph: `health-core` → provider/UI/connector/infrastructure, `connectors` → analytics/agent, `skills` → provider SDK. Пока domain packages отсутствуют, он не доказывает их runtime isolation. Запись данных, provenance, missingness, воспроизводимость analytics и privacy требуют отдельных contract/data-flow/eval checks при реализации соответствующих milestones:
+Ниже перечислены архитектурные и продуктовые invariants. M0 boundary checker проверяет только запрещённые import edges на synthetic graph и в текущем repository graph: `health-core` → provider/UI/connector/infrastructure, `connectors` → analytics/agent, `agent-runtime` → database implementation, `skills` → provider SDK. Пока domain packages отсутствуют, он не доказывает их runtime isolation. Запись данных, provenance, missingness, воспроизводимость analytics и privacy требуют отдельных contract/data-flow/eval checks при реализации соответствующих milestones:
 
 1. `health-core` не импортирует provider, UI, connector/FHIR или infrastructure implementations; analytics не пишет Raw/Canonical. [Project `02 ARCHITECTURE`, §9](project-spec/v0.4.0/02_ARCHITECTURE__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md).
 2. Connectors пишут только Source/Raw; validation/mapping в canonical выполняется ingestion.
@@ -67,6 +67,7 @@ Design `0.2.0` закрепляет факт до интерпретации, о
 | M2 Health Intelligence | Metric registry, quality/baseline/trend, state diff, meaningfulness, deterministic `What Changed`. | Golden analytics cases и JSON contract до M3 Today/Health Connect. [Project `11 IMPLEMENTATION`, §8 Steps 08–14](project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md); [Project `12 EVALS`, §§4–5](project-spec/v0.4.0/12_EVALS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md). |
 | M3 Product Experience | Mobile shell, Today, Insight/Metric Detail, Timeline и Health Connect. | Vertical Slice A с доступным source/provenance и корректными состояниями данных. [Project `11 IMPLEMENTATION`, §8 Steps 15–19](project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md); [Design `12 STATE_MATRIX`, §§2–3](product-design/v0.2.0/12_STATE_MATRIX_EDGE_CASES__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md). |
 | M4 Clinical Data + AI | PDF/extraction review, Safety, Context, Model Gateway, claims и AI UX. | Policy/privacy и capability evals до provider use или symptom write. [Project `11 IMPLEMENTATION`, §8 Steps 20–30](project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md); [Project `12 EVALS`, §§15–17](project-spec/v0.4.0/12_EVALS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md). |
+| M5 Hardening | Provenance inspector, audit, observability, security hardening, safety/analytics/agent evals, export/delete. | Personal Beta только после прохождения quality gates. [Project `11 IMPLEMENTATION`, §8 Steps 31–39](project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md). |
 
 Design D0–D1 может исследовать core flow на synthetic content до кода M3. Это не переносит реализацию `What Changed` в M0/M1. [Design `25 DESIGN_ROADMAP`, D0–D1](product-design/v0.2.0/25_DESIGN_ROADMAP__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md).
 
@@ -83,7 +84,7 @@ Design D0–D1 может исследовать core flow на synthetic conten
 
 Owner выбрал root workspace, один реальный M0 package `architecture-guardrails` и synthetic test corpus в ответе на отдельный вопрос о package graph в текущем Codex chat; решение записано 15-10-26 12-59-48 (Europe/Moscow). Затем owner утвердил полный M0 scope с выбранным graph, pins/checks и non-goals, указав «старт позже»; запись внесена 15-10-26 13-13-12. Root-only graph не даёт содержательного package build; полный scaffold создаёт пустые packages, запрещённые текущим [AGENTS, Scope](../AGENTS.md#scope-и-разрешения). M1 domain packages должны появляться вместе с реальными contracts.
 
-Подробный scope и альтернативы — в [M0 plan, «Журнал решений»](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-34-06__v0.3.1__docs-plan.md#журнал-решений).
+Подробный scope и альтернативы — в [M0 plan, «Журнал решений»](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md#журнал-решений).
 
 - Сверка onboarding и источников: `go` для планирования.
 - M0 scope: `approved` владельцем для package graph, pins/checks и non-goals; runtime compatibility ещё `not_run`.

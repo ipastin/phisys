@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — утверждённый scope M0 Foundation
 created: "15-10-26 12-28-44"
-updated: "15-10-26 13-34-06"
+updated: "15-10-26 14-16-46"
 timezone: Europe/Moscow
-version: 0.3.1
-commit: "docs(plan): specify executable M0 acceptance checks"
+version: 0.3.2
+commit: "docs(plan): cover agent database import boundary"
 status: approved
 ---
 
@@ -25,7 +25,7 @@ status: approved
 
 ## Контекст и источники
 
-- [Onboarding audit](../../docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-34-06__v0.3.1__docs-audit.md) — входная доказательная база.
+- [Onboarding audit](../../docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-audit.md) — входная доказательная база.
 - Актуальные packs: [Project Spec 0.4.0](../../docs/project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md)
   и [Design Spec 0.2.0](../../docs/product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md).
 - Plan contract: [.agent/PLANS.md](../PLANS.md). Прежний [M0 template](M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md) остаётся историческим; его ожидание ещё не слитого docs PR опровергнуто текущим checkout.
@@ -42,7 +42,7 @@ Package содержит реальную import-rule configuration, испол�
 
 ## Invariants и влияние на архитектуру
 
-Правила должны отклонять будущие forbidden imports `health-core` → model/vendor/UI/infrastructure, `connectors` → analytics/agent и `skills` → provider SDK; проверять workspace imports, tsconfig aliases и относительные межпакетные пути. Для этих правил нужны allowed и forbidden fixtures. Ограничения вроде «analytics не пишет Raw/Canonical» нельзя доказать одним import checker: их M1/M2 реализация требует отдельного API/data-flow test. До появления domain packages M0 доказывает поведение checker на synthetic graph и проверяет фактический repository graph, но не runtime isolation будущих modules. Источники:
+Правила должны отклонять будущие forbidden imports `health-core` → model/vendor/UI/infrastructure, `connectors` → analytics/agent, `agent-runtime` → database implementation и `skills` → provider SDK; проверять workspace imports, tsconfig aliases и относительные межпакетные пути. Для каждого правила нужны allowed и forbidden fixtures. Ограничения вроде «analytics не пишет Raw/Canonical» и «agent не исполняет SQL напрямую» нельзя доказать одним import checker: их реализация требует отдельного API/data-flow test. До появления domain packages M0 доказывает поведение checker на synthetic graph и проверяет фактический repository graph, но не runtime isolation будущих modules. Источники:
 [Project `02 ARCHITECTURE`, §9](../../docs/project-spec/v0.4.0/02_ARCHITECTURE__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md)
 и [Project `14 AGENTS`, §4](../../docs/project-spec/v0.4.0/14_AGENTS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md).
 M0 fixture graph содержит только искусственные технические данные, не health records или clinical entities.
@@ -97,7 +97,7 @@ M0 fixture graph содержит только искусственные тех
 | `pnpm install --frozen-lockfile` | Fresh install без lockfile diff. | `not_run` |
 | `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | Scoped first-party source/config проходят; TS strict. | `not_run` |
 | `pnpm test:unit` | Реальные assertions для guardrails logic. | `not_run` |
-| `pnpm test:architecture` | Allowed graph проходит, forbidden workspace/alias/relative edges отклоняются; тот же checker проверяет текущий first-party source graph; тест не зависит от наличия будущих domain packages. | `not_run` |
+| `pnpm test:architecture` | Allowed graph проходит; forbidden workspace/alias/relative edges, включая `agent-runtime` → database implementation, отклоняются; тот же checker проверяет текущий first-party source graph; тест не зависит от наличия будущих domain packages. | `not_run` |
 | `pnpm test`, `pnpm build` | Запускают непустые targets; build artifact используется checker. | `not_run` |
 | `pnpm audit --audit-level high` | Нет неразобранных high/critical advisories; ошибка registry не считается pass. | `not_run` |
 | `gitleaks git . --redact` | Нет secret findings в полном Git history; CLI `8.30.1`, CI checkout с `fetch-depth: 0`. | `not_run` |
