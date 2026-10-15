@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M0 Foundation implementation evidence
 created: "15-10-26 15-09-12"
-updated: "15-10-26 15-09-12"
+updated: "15-10-26 15-13-38"
 timezone: Europe/Moscow
-version: 0.1.0
-commit: "docs(plan): record M0 implementation evidence"
+version: 0.1.1
+commit: "docs(plan): remove local path from M0 evidence"
 status: in_progress
 ---
 
@@ -60,7 +60,7 @@ Evidence записано 15-10-26 15-09-12 (Europe/Moscow). CWD для local ch
 | Check / action | Result | Evidence / limit |
 | --- | --- | --- |
 | `node --version`, `pnpm --version` под временной Node 24.22.0 | `pass` | `v24.22.0`, `12.13.0`; системный default Node остаётся `24.17.0` |
-| Fresh clone `pnpm install --frozen-lockfile`, `pnpm build` | `pass` | `/private/tmp/myphisys-m0-fresh-afe9ba3`; lock SHA-256 до/после `0f3e8dd8fb99f9f83ded1837b09bce04d7ed00588d9e6331761990376d85b03d`; build 1/1 |
+| Fresh clone `pnpm install --frozen-lockfile`, `pnpm build` | `pass` | изолированный временный clone; lock SHA-256 до/после `0f3e8dd8fb99f9f83ded1837b09bce04d7ed00588d9e6331761990376d85b03d`; build 1/1 |
 | `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | `pass` | exact Node command, zero exit; formatter scoped to new first-party files |
 | `pnpm test:unit`, `pnpm test:architecture`, `pnpm test`, `pnpm build` | `pass` | 2 unit assertions; 15 architecture cases; 1 real build target; negative cases exit nonzero |
 | `pnpm audit --audit-level high` | `pass` | registry response: no known vulnerabilities |
