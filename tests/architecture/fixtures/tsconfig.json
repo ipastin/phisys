@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@myphisys/*": ["packages/*/src/index.ts"],
+      "@alias/*": ["packages/*/src/index.ts"]
+    }
+  }
+}
