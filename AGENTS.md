@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Codex instructions
 created: "15-10-26 09-37-26"
-updated: "15-10-26 11-09-37"
+updated: "15-10-26 11-40-47"
 timezone: Europe/Moscow
-version: 0.2.0
-commit: "docs(codex): reconcile instructions with accepted specifications"
+version: 0.2.1
+commit: "docs(codex): clarify health fact and natural-language write rules"
 ---
 
 # MyPhisys
@@ -23,16 +23,21 @@ Product domain: https://phisys.cloud. Не переименовывай брен
 ## Ограничения архитектуры
 
 Ниже — компактная выборка из Project Spec `14 AGENTS`, `02 ARCHITECTURE` и accepted ADR.
-Полный registry — 31 invariant и 170 ADR в импортированном Project Spec. При конфликте:
+Полный registry — 31 invariant и 170 ADR в импортированном Project Spec. В заголовке
+`13 ADR` статус привязан к v0.3.0, хотя manifest v0.4.0 и записи ADR указывают `Accepted`;
+перед опорой на новые ADR учти [неоднозначность статуса](docs/SOURCE_OF_TRUTH.md#открытые-вопросы-исходных-спецификаций). При конфликте:
 explicit invariant → accepted ADR → domain specification → implementation convenience.
 Конфликт фиксируй; source documents не переписывай молча.
 
 - Canonical Health Store хранит подтверждённые health facts; AI inference автоматически фактом не становится.
-- У каждого факта сохраняются provenance, единицы, временная семантика и epistemic state.
+- У каждого факта сохраняются provenance, временная семантика и epistemic state.
+  Для количественных значений сохраняй original value/unit; canonical value/unit — при нормализации.
 - Missing/unknown не означает ноль, false, норму или отсутствие события.
 - Deterministic analytics предшествует generative reasoning; одинаковые входы дают одинаковый результат.
 - Connectors пишут в Source/Raw layer; переход к canonical data проходит отдельную validation boundary.
-- LLM не пишет напрямую в Canonical Health Store; изменения требуют проверяемого preview/confirmation workflow.
+- LLM не пишет напрямую в Canonical Health Store. Natural-language writes через product agent
+  проходят structured preview и explicit confirmation when required (INV-014).
+  Connector ingestion проходит Raw → validation → canonical без общего требования подтверждать каждый факт.
 - Product agent получает только scoped, разрешённые tools; generic SQL/network/filesystem capability ему не выдаётся.
   Это ограничение product runtime, а не запрет Codex читать файлы и запускать проверки репозитория.
 - Model access проходит через capability alias и Model Gateway; provider memory не заменяет память MyPhisys.

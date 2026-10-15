@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Source of Truth
 created: "15-10-26 09-37-26"
-updated: "15-10-26 11-09-37"
+updated: "15-10-26 11-40-47"
 timezone: Europe/Moscow
-version: 0.2.0
-commit: "docs(sources): reconcile source index with owner-provided packs"
+version: 0.2.1
+commit: "docs(sources): record ADR status and P2 date review gates"
 status: proposed
 ---
 
@@ -21,7 +21,7 @@ repository — [ipastin/phisys](https://github.com/ipastin/phisys); выбран
 | --- | --- | --- |
 | Project Specification Pack `0.4.0` | [Project README](project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md), [manifest](project-spec/v0.4.0/manifest.json) | Предоставлен владельцем; 18 Markdown-документов. Current product/architecture/engineering source. |
 | Product Design Specification Pack `0.2.0` | [Design README](product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md), [manifest](product-design/v0.2.0/manifest.json) | Предоставлен владельцем; 28 Markdown-документов. Current design specification. |
-| Root handoff `0.2.0` | Ссылки ниже | Compact Codex instructions, plan contract и onboarding; подчиняется оригинальным sources. |
+| Root guidance `0.2.1`; onboarding/M0 template `0.2.0` | Ссылки ниже | Compact Codex instructions, plan contract и onboarding; подчиняются оригинальным sources. |
 | Figma | Approved file/node URLs ещё не указаны | `missing` для visual/interaction implementation; не выдумывай design authority. |
 | История чатов / старые packs | В Git как current release не импортированы | Только context/history, не замена оригиналов. |
 
@@ -47,6 +47,25 @@ patterns ничего не выявил; перед дальнейшим public 
 Общая `git diff --check` сообщает 15 trailing-whitespace warnings в оригинальных
 `16 MODEL_STRATEGY` и Design `23 PROTOTYPING_VALIDATION` (в том числе Markdown line breaks).
 Исходные bytes сохранены; проверка handoff-файлов отдельно проходит без warnings.
+
+## Открытые вопросы исходных спецификаций
+
+- **ADR status — `needs_review` до реализации новых решений.** Project [13 ADR, §Status](project-spec/v0.4.0/13_ADR__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md)
+  говорит, что перечисленные решения `Accepted` для v0.3.0. При этом pack v0.4.0,
+  его manifest (`accepted_adr_count: 170`) и отдельные записи ADR-151–170 указывают
+  `Accepted`. Вероятно, строка §Status не обновлена, но это вывод, а не подтверждённое
+  решение владельца. Перед implementation, зависящей от ADR-151–170, зафиксируй
+  владельцем их нормативный статус в addendum или следующей версии source pack;
+  импортированный оригинал не исправляй молча.
+- **P2 measurement dates — `needs_review` до production cloud routing.** Project
+  [16 MODEL_STRATEGY, §P2](project-spec/v0.4.0/16_MODEL_STRATEGY__created-10-10-26_11-38-32__updated-10-10-26_04-03-47__v0.4.0.md)
+  называет контекст de-identified, но пример содержит точные `measurement_dates`;
+  P2 указан как основной уровень для cloud reasoning. В source не определены
+  достаточное преобразование дат и одобренная конфигурация provider для такого payload.
+  До отправки реальных данных нужно отдельное privacy решение: заменить даты
+  интервалами там, где это сохраняет задачу, либо применить более строгий routing;
+  основание и provider configuration должны быть документированы. Из этого индекса
+  нельзя выводить, что точные даты уже безопасны для P2.
 
 ## Приоритет решений
 

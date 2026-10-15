@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — ExecPlan contract
 created: "15-10-26 09-37-26"
-updated: "15-10-26 11-09-37"
+updated: "15-10-26 11-40-47"
 timezone: Europe/Moscow
-version: 0.2.0
-commit: "docs(plans): align plan contract with imported sources"
+version: 0.2.1
+commit: "docs(plans): clarify guidance and template versions"
 ---
 
 # ExecPlans
@@ -65,7 +65,9 @@ safety/privacy change и milestone. Для небольшой локальной
 
 ## Файлы и версии
 
-Handoff version `0.2.0` независима от Project Spec `0.4.0` и Product Design Spec `0.2.0`.
+Версия root guidance (`AGENTS`, `SOURCE_OF_TRUTH`, этот contract) — `0.2.1`; onboarding
+и M0 template остаются `0.2.0` до изменения их содержания. Эти версии независимы от
+Project Spec `0.4.0` и Product Design Spec `0.2.0`.
 В теле каждого нового Markdown-документа указывай `created`, `updated`, `timezone`, `version`, `commit`.
 Commit field содержит Conventional Commit, например `docs(plan): add foundation template`.
 Дата: `dd-mm-yy`; время: `hh-mm-ss`; рабочая timezone: `Europe/Moscow`.
