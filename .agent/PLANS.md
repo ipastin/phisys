@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — ExecPlan contract
 created: "15-10-26 09-37-26"
-updated: "15-10-26 11-40-47"
+updated: "15-10-26 12-38-00"
 timezone: Europe/Moscow
-version: 0.2.1
-commit: "docs(plans): clarify guidance and template versions"
+version: 0.2.3
+commit: "docs(plans): link M0 review draft"
 ---
 
 # ExecPlans
@@ -65,8 +65,9 @@ safety/privacy change и milestone. Для небольшой локальной
 
 ## Файлы и версии
 
-Версия root guidance (`AGENTS`, `SOURCE_OF_TRUTH`, этот contract) — `0.2.1`; onboarding
-и M0 template остаются `0.2.0` до изменения их содержания. Эти версии независимы от
+Версия root guidance (`AGENTS`, `SOURCE_OF_TRUTH`, этот contract) — `0.2.3`; onboarding
+и M0 template остаются `0.2.0`, а onboarding audit и M0 review draft — `0.1.1`.
+Template и draft имеют разные статусы; draft не является вторым «current» template. Версии независимы от
 Project Spec `0.4.0` и Product Design Spec `0.2.0`.
 В теле каждого нового Markdown-документа указывай `created`, `updated`, `timezone`, `version`, `commit`.
 Commit field содержит Conventional Commit, например `docs(plan): add foundation template`.
@@ -84,4 +85,6 @@ Commit field содержит Conventional Commit, например `docs(plan):
 ## Стартовый шаблон
 
 [M0 Foundation template](plans/M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md).
-Сначала onboarding audit, затем review и заполнение M0; implementation запускается отдельной задачей.
+Текущий [onboarding audit](../docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_12-38-00__v0.1.1__docs-audit.md)
+служит входом в отдельный [M0 review draft](plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_12-38-00__v0.1.1__docs-plan.md).
+Implementation запускается отдельной задачей после review scope и фиксации authorization.

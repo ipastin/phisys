@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Codex instructions
 created: "15-10-26 09-37-26"
-updated: "15-10-26 11-40-47"
+updated: "15-10-26 12-38-00"
 timezone: Europe/Moscow
-version: 0.2.1
-commit: "docs(codex): clarify health fact and natural-language write rules"
+version: 0.2.3
+commit: "docs(codex): point M0 work to review draft"
 ---
 
 # MyPhisys
@@ -51,7 +51,8 @@ explicit invariant → accepted ADR → domain specification → implementation 
 
 ## Scope и разрешения
 
-- Этот PR содержит документацию и source packs; onboarding и M0 template не разрешают application implementation.
+- Текущий `main` содержит merged documentation и source packs. [Onboarding audit](docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_12-38-00__v0.1.1__docs-audit.md)
+  и [M0 review draft](.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_12-38-00__v0.1.1__docs-plan.md) не разрешают application implementation.
 - Работай в отдельной `codex/*` ветке и через PR. Не создавай и не меняй `main` напрямую.
 - Merge, deploy, DNS/domain changes, secrets, Figma/shared-system writes требуют отдельного разрешения.
 - Для изменения canonical model, safety/privacy, accepted ADR, IA или утверждённого UX сначала покажи decision и trade-offs.
