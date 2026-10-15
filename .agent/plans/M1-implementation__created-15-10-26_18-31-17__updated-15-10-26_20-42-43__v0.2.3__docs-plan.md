@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M1 implementation evidence
 created: "15-10-26 18-31-17"
-updated: "15-10-26 19-34-10"
+updated: "15-10-26 20-42-43"
 timezone: Europe/Moscow
-version: 0.2.2
-commit: "docs(plan): record review fixes and CI evidence"
+version: 0.2.3
+commit: "docs(plan): record PR review corrections"
 status: in_progress
 ---
 
@@ -54,7 +54,8 @@ The minimum M1 slice uses `identity`, `source`, `health`, and `jobs` PostgreSQL 
 - [x] M1.5: manual weight/BP/observation/symptom adapter through the same SourceRecord route, including BP component tombstones; root scripts and CI DB service updated.
 - [x] PR CI run `38767837343` passed on head `82e4fbe688f3fd35e085e8536269973ca35a697e`, before review fixes.
 - [x] CodeRabbit and Codex review of that head received; rollback handling, concurrent event locking, fixed event key and int32 version range addressed with tests.
-- [ ] CI and review on the new pushed head after review fixes. No merge or deploy authorization.
+- [x] PR #5 review of `216479c52783efb82cd1773015d1eaafdeb8d309` found ambiguous default event identity, blocked correction from the sole surviving supporting source, and false conflicts for equivalent canonical quantities. All three are corrected with DB regression tests.
+- [ ] CI and review on the pushed head containing these three corrections. No merge or deploy authorization.
 
 ## Validation evidence
 
@@ -71,7 +72,9 @@ All commands below used repository root as cwd and a working tree based on `12bd
 | 15-10-26 19-18 | GitHub Actions run `38767837343` on `82e4fbe688f3fd35e085e8536269973ca35a697e` | `pass` | Pinned Node `24.22.0`, frozen install, lint, format, typecheck, unit/architecture/DB suites, build, audit and secret scan all passed |
 | 15-10-26 19-28 | `pnpm lint`, `pnpm typecheck`, `pnpm test:unit` after review fixes | `pass` | Includes rollback-failure unit test |
 | 15-10-26 19-33 | `DATABASE_URL=... M1_DISPOSABLE_DB=1 pnpm test:db` on fresh PostgreSQL 16 | `pass` | 3/3 DB, 10/10 ingestion, 2/2 manual; includes event concurrency, key lifecycle and int32 regression |
-| Pending new PR head | CI on pinned Node `24.22.0` and renewed review | `not_run` | The prior successful run does not certify the review-fix commit |
+| 15-10-26 20-37 | `DATABASE_URL=... M1_DISPOSABLE_DB=1 pnpm test:db` on disposable PostgreSQL 16 | `pass` | 3/3 DB, 13/13 ingestion, 2/2 manual; includes all three PR review regressions |
+| 15-10-26 20-40 | `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `git diff --check` | `pass` | ESLint, Prettier, TypeScript, unit and 19/19 architecture tests; local Node `24.17.0` |
+| Pending corrected PR head | CI on pinned Node `24.22.0` and renewed review | `not_run` | Earlier successful runs do not certify this correction commit |
 
 ## Decision and risk log
 
@@ -80,12 +83,13 @@ All commands below used repository root as cwd and a working tree based on `12bd
 - `source.raw_record` stores the full received envelope as JSONB and is immutable. Invalid time retains its original string in Raw with nullable `recorded_at`, then is quarantined. Unsupported concept/unit, version collision and semantic/value conflict do not create a verified clinical fact.
 - A quarantined or conflicting correction does not remove the support of an earlier accepted source version; only an accepted later tombstone does. The regression is covered by a DB integration test.
 - A source record cannot change its `eventKey` between versions; changes are retained in Raw and quarantined. Concurrent records for one event serialize before canonical lookup. Source version is bounded to PostgreSQL `integer`. These boundaries have DB integration tests.
+- Default event identity now encodes `(connector_id, external_record_id)` as a JSON tuple, preventing delimiter collisions. A correction can supersede a fact when its source is the sole live support, even after the original source is tombstoned. Equal canonical quantities may differ only by floating-point conversion noise; rounded differences still go to review. All three cases have DB integration tests.
 - Transaction rollback failure does not hide the original error; the broken PostgreSQL client is discarded. A unit test covers the failure path.
 - Local tests demonstrate role/RLS behavior and transaction atomicity on PostgreSQL 16. They do not prove production authorization, retention/export/delete policy, clinical terminology coverage or full EVALS §3 medication/document cases.
 
 ## Outcome
 
-M1 behavior is locally reproducible on a disposable database. The next step is CI/review on the review-fix PR head, followed by owner-controlled merge as a separate action. Production use remains outside this milestone.
+M1 behavior, including the PR review corrections, is locally reproducible on a disposable database. The next step is CI/review on the corrected PR head, followed by owner-controlled merge as a separate action. Production use remains outside this milestone.
 
 ## Risks and recovery
 

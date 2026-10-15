@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Source of Truth
 created: "15-10-26 09-37-26"
-updated: "15-10-26 19-34-10"
+updated: "15-10-26 20-42-43"
 timezone: Europe/Moscow
-version: 0.2.18
-commit: "docs(sources): update M1 implementation evidence link"
+version: 0.2.19
+commit: "docs(sources): link PR review corrections"
 status: proposed
 ---
 
@@ -132,4 +132,4 @@ M5 Hardening: provenance/audit/security/evals/export/delete → Personal Beta ga
 - [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) — утверждённый scope/toolchain/checks; на момент approval старт был отложен.
 - [M0 implementation evidence](../.agent/plans/M0-foundation-implementation__created-15-10-26_15-09-12__updated-15-10-26_17-32-04__v0.2.4__docs-plan.md) — выполнение после отдельной команды владельца; локальные checks, PR CI и принятые владельцем исключения.
 - [M1 approved ExecPlan](../.agent/plans/M1-health-data-pipeline__created-15-10-26_18-06-16__updated-15-10-26_18-20-16__v0.2.0__docs-plan.md) — утверждённые D1–D3 и Steps 03–07; импортирован из отдельной плановой ветки без изменения исходного approval.
-- [M1 implementation evidence](../.agent/plans/M1-implementation__created-15-10-26_18-31-17__updated-15-10-26_19-34-10__v0.2.2__docs-plan.md) — M1.0 schema/contract assertions, локальные проверки и ограничения; PR CI фиксируется на точном head.
+- [M1 implementation evidence](../.agent/plans/M1-implementation__created-15-10-26_18-31-17__updated-15-10-26_20-42-43__v0.2.3__docs-plan.md) — M1.0 schema/contract assertions, локальные проверки, PR review corrections и ограничения; PR CI фиксируется на точном head.

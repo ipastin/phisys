@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import {
   uuidv7,
   withPerson,
@@ -62,26 +63,58 @@ function hash(record: SourceRecord): string {
     .digest('hex');
 }
 
-async function hasOtherLiveSupport(
+function defaultEventKey(record: SourceRecord): string {
+  return JSON.stringify([record.connectorId, record.externalRecordId]);
+}
+
+function sameCanonicalValue(existing: unknown, incoming: FactValue): boolean {
+  if (!existing || typeof existing !== 'object') return false;
+  const value = existing as Record<string, unknown>;
+  if (value.kind !== incoming.kind) return false;
+  if (incoming.kind === 'status') return value.status === incoming.status;
+  if (
+    value.canonicalUnit !== incoming.canonicalUnit ||
+    typeof value.canonicalValue !== 'number' ||
+    typeof incoming.canonicalValue !== 'number'
+  )
+    return false;
+  // Allow only floating-point conversion noise, not rounded measurements.
+  return (
+    Math.abs(value.canonicalValue - incoming.canonicalValue) <=
+    Number.EPSILON *
+      Math.max(
+        1,
+        Math.abs(value.canonicalValue),
+        Math.abs(incoming.canonicalValue),
+      )
+  );
+}
+
+async function liveSupport(
   db: PoolClient,
   personId: string,
   factId: string,
   recordId: string,
-): Promise<boolean> {
+): Promise<{ same: boolean; other: boolean }> {
   const support = await db.query(
-    `SELECT 1 FROM health.provenance p
+    `SELECT COALESCE(bool_or(r.record_id=$3), false) AS same,
+            COALESCE(bool_or(r.record_id<>$3), false) AS other
+     FROM health.provenance p
      JOIN source.raw_record r ON r.id=p.raw_id AND r.person_id=p.person_id
-     WHERE p.person_id=$1 AND p.fact_id=$2 AND r.record_id<>$3
+     WHERE p.person_id=$1 AND p.fact_id=$2
        AND r.operation='upsert'
        AND NOT EXISTS (
          SELECT 1 FROM source.raw_record tombstone
          LEFT JOIN source.quarantine q ON q.person_id=tombstone.person_id AND q.raw_id=tombstone.id
          WHERE tombstone.person_id=r.person_id AND tombstone.record_id=r.record_id
            AND tombstone.version>r.version AND tombstone.operation='delete' AND q.id IS NULL
-       ) LIMIT 1`,
+       )`,
     [personId, factId, recordId],
   );
-  return support.rows.length > 0;
+  return {
+    same: support.rows[0]?.same === true,
+    other: support.rows[0]?.other === true,
+  };
 }
 
 async function emit(
@@ -222,20 +255,18 @@ export async function ingest(
     if (!validRecordedAt)
       return quarantine(db, record.personId, rawId, 'invalid_time');
 
-    const eventKey =
-      record.eventKey ?? `${record.connectorId}:${record.externalRecordId}`;
+    const eventKey = record.eventKey ?? defaultEventKey(record);
     const first = prior.rows.at(-1);
     if (
       first &&
-      (first.prior_event_key ??
-        `${record.connectorId}:${record.externalRecordId}`) !== eventKey
+      (first.prior_event_key ?? defaultEventKey(record)) !== eventKey
     )
       return quarantine(db, record.personId, rawId, 'event_key_changed');
     await db.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
       `${record.personId}:event:${eventKey}`,
     ]);
     const current = await db.query<Row>(
-      'SELECT id, concept_id, kind, value, effective, origin_raw_id FROM health.fact WHERE person_id=$1 AND event_key=$2 AND state=$3 FOR UPDATE',
+      'SELECT id, concept_id, kind, value, effective FROM health.fact WHERE person_id=$1 AND event_key=$2 AND state=$3 FOR UPDATE',
       [record.personId, eventKey, 'current'],
     );
     const fact = current.rows[0];
@@ -243,7 +274,7 @@ export async function ingest(
     if (record.operation === 'delete') {
       if (fact && typeof fact.id === 'string') {
         if (
-          !(await hasOtherLiveSupport(db, record.personId, fact.id, recordId))
+          !(await liveSupport(db, record.personId, fact.id, recordId)).other
         ) {
           await db.query(
             'UPDATE health.fact SET state=$1 WHERE person_id=$2 AND id=$3',
@@ -287,19 +318,11 @@ export async function ingest(
     }
 
     if (fact && typeof fact.id === 'string') {
-      const sameResult = await db.query<Row>(
-        'SELECT value=$1::jsonb AND effective=$2::jsonb AS same FROM health.fact WHERE person_id=$3 AND id=$4',
-        [
-          JSON.stringify(input.value),
-          JSON.stringify(input.effective),
-          record.personId,
-          fact.id,
-        ],
-      );
       const same =
         fact.concept_id === input.conceptId &&
         fact.kind === input.kind &&
-        sameResult.rows[0]?.same === true;
+        sameCanonicalValue(fact.value, input.value) &&
+        isDeepStrictEqual(fact.effective, input.effective);
       if (same) {
         await db.query(
           'INSERT INTO health.provenance (person_id, fact_id, raw_id, transformation) VALUES ($1,$2,$3,$4)',
@@ -314,13 +337,10 @@ export async function ingest(
         );
         return { state: 'duplicate', rawId };
       }
-      const previousFromSameRecord = await db.query<Row>(
-        'SELECT 1 FROM source.raw_record WHERE id=$1 AND record_id=$2',
-        [fact.origin_raw_id, recordId],
-      );
+      const support = await liveSupport(db, record.personId, fact.id, recordId);
       if (
-        !previousFromSameRecord.rows.length ||
-        (await hasOtherLiveSupport(db, record.personId, fact.id, recordId)) ||
+        !support.same ||
+        support.other ||
         fact.concept_id !== input.conceptId ||
         fact.kind !== input.kind
       ) {

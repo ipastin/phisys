@@ -138,6 +138,127 @@ describe('M1 ingestion contract', () => {
     expect(trace.rowCount).toBeGreaterThan(0);
   });
 
+  test('default event keys keep delimiter-containing source identities separate', async () => {
+    const a = measurement({
+      connectorId: 'collision:a',
+      externalRecordId: 'b',
+    });
+    const b = measurement({
+      connectorId: 'collision',
+      externalRecordId: 'a:b',
+    });
+    delete a.eventKey;
+    delete b.eventKey;
+    expect((await ingest(app, a)).state).toBe('imported');
+    expect((await ingest(app, b)).state).toBe('imported');
+    const facts = await withPerson(app, personId, (db) =>
+      db.query(
+        "SELECT event_key FROM health.fact WHERE state='current' AND event_key IN ($1,$2)",
+        [
+          JSON.stringify(['collision:a', 'b']),
+          JSON.stringify(['collision', 'a:b']),
+        ],
+      ),
+    );
+    expect(
+      facts.rows.map((row: { event_key: string }) => row.event_key).sort(),
+    ).toEqual(
+      [
+        JSON.stringify(['collision:a', 'b']),
+        JSON.stringify(['collision', 'a:b']),
+      ].sort(),
+    );
+  });
+
+  test('sole surviving supporting source can correct a deleted origin', async () => {
+    const a = measurement({
+      connectorId: 'handoff-a',
+      externalRecordId: 'origin',
+      eventKey: 'handoff-correction',
+    });
+    const b = measurement({
+      connectorId: 'handoff-b',
+      externalRecordId: 'support',
+      eventKey: 'handoff-correction',
+    });
+    const first = await ingest(app, a);
+    expect(first.state).toBe('imported');
+    if (first.state !== 'imported' || !first.factId)
+      throw new Error('Expected origin fact');
+    expect((await ingest(app, b)).state).toBe('duplicate');
+    expect(
+      (
+        await ingest(app, {
+          ...a,
+          version: 2,
+          operation: 'delete',
+          payload: {},
+        })
+      ).state,
+    ).toBe('imported');
+    const corrected = await ingest(app, {
+      ...b,
+      version: 2,
+      payload: {
+        ...b.payload,
+        value: { kind: 'quantity', originalValue: 73, originalUnit: 'kg' },
+      },
+    });
+    expect(corrected.state).toBe('imported');
+    const facts = await withPerson(app, personId, (db) =>
+      db.query(
+        "SELECT id, state, supersedes_id, value FROM health.fact WHERE event_key='handoff-correction'",
+      ),
+    );
+    expect(facts.rows).toHaveLength(2);
+    expect(
+      facts.rows.find((row: { id: string }) => row.id === first.factId)?.state,
+    ).toBe('superseded');
+    expect(
+      facts.rows.find((row: { state: string }) => row.state === 'current'),
+    ).toMatchObject({
+      supersedes_id: first.factId,
+      value: { canonicalValue: 73 },
+    });
+  });
+
+  test('equivalent canonical quantities from different units add support', async () => {
+    const kg = measurement({
+      connectorId: 'unit-kg',
+      externalRecordId: 'measurement',
+      eventKey: 'equivalent-units',
+      payload: {
+        ...measurement().payload,
+        value: {
+          kind: 'quantity',
+          originalValue: 72.5747792,
+          originalUnit: 'kg',
+        },
+      },
+    });
+    const lb = measurement({
+      connectorId: 'unit-lb',
+      externalRecordId: 'measurement',
+      eventKey: 'equivalent-units',
+      payload: {
+        ...measurement().payload,
+        value: { kind: 'quantity', originalValue: 160, originalUnit: 'lb' },
+      },
+    });
+    expect((await ingest(app, kg)).state).toBe('imported');
+    expect((await ingest(app, lb)).state).toBe('duplicate');
+    const result = await withPerson(app, personId, (db) =>
+      db.query(
+        "SELECT (SELECT count(*)::int FROM health.fact WHERE event_key='equivalent-units') AS facts, (SELECT count(*)::int FROM health.provenance p JOIN health.fact f ON f.id=p.fact_id WHERE f.event_key='equivalent-units') AS sources, (SELECT count(*)::int FROM health.conflict WHERE event_key='equivalent-units') AS conflicts",
+      ),
+    );
+    expect(result.rows[0]).toMatchObject({
+      facts: 1,
+      sources: 2,
+      conflicts: 0,
+    });
+  });
+
   test('conflict remains unresolved; malformed input is quarantined', async () => {
     await ingest(
       app,
