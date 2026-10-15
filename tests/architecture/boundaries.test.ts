@@ -27,6 +27,7 @@ describe('architecture boundaries', () => {
     ['health-core', 'workspace', 'health-core-independence'],
     ['health-core', 'alias', 'health-core-independence'],
     ['health-core', 'relative', 'health-core-independence'],
+    ['health-core', 'health-connect', 'health-core-independence'],
     ['health-core', 'provider', 'health-core-independence'],
     ['connectors', 'workspace', 'connector-isolation'],
     ['connectors', 'alias', 'connector-isolation'],
