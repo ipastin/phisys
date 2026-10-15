@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M0 Foundation implementation evidence
 created: "15-10-26 15-09-12"
-updated: "15-10-26 15-18-32"
+updated: "15-10-26 15-27-42"
 timezone: Europe/Moscow
-version: 0.2.0
-commit: "docs(plan): record M0 PR CI result"
+version: 0.2.1
+commit: "docs(plan): include test harness typecheck evidence"
 status: needs_review
 ---
 
@@ -37,7 +37,7 @@ Checker отклоняет `health-core` → model/vendor/UI/infrastructure, `co
 | Файлы | Consumer / effect |
 | --- | --- |
 | `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.node-version`, `turbo.json` | exact install, root scripts, один package build |
-| `tsconfig.json`, `eslint.config.mjs`, `.prettierrc.json`, `.gitignore` | strict typecheck, first-party lint/format, generated output exclusion |
+| `tsconfig.json`, `tsconfig.tests.json`, `eslint.config.mjs`, `.prettierrc.json`, `.gitignore` | strict source/test-harness typecheck, first-party lint/format, generated output exclusion |
 | `packages/architecture-guardrails/src/**`, package config/tests | built CLI и rules для root `test:architecture` |
 | `tests/architecture/**` | synthetic allowed/forbidden corpus и current source graph check |
 | `.github/workflows/ci.yml` | `pull_request`/`main` checks, read-only token, exact runtime/action SHAs, full history scan |
@@ -50,23 +50,23 @@ Callers до M0 отсутствовали. Новый root `test:architecture` 
 - [x] M0.0: `origin/main`, branch, diff, scoped instructions и exact pins перепроверены.
 - [x] M0.1: workspace, lockfile и реальный package build созданы; frozen install из fresh clone пройден.
 - [x] M0.2: checker и negative corpus проходят; current first-party graph проверен.
-- [x] M0.3: PR CI `validate` прошёл на `b54d3ec`; fork PR runtime остаётся `needs_review`.
+- [x] M0.3: PR CI `validate` прошёл на `92cafce`; fork PR runtime остаётся `needs_review`.
 - [x] M0.4: [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт; diff и local evidence проверены.
 
 ## Validation / Acceptance
 
-Local evidence записано 15-10-26 15-09-12, CI result — 15-10-26 15-18-32 (Europe/Moscow). CWD для local checks: repository root, кроме fresh clone. Code SHA: `afe9ba3`; PR CI SHA: `b54d3ece18b74ccc5bb1f8c79185e643d010d591`. Evidence pointers: output команд текущего Codex task и [GitHub Actions run 38733441910](https://github.com/ipastin/phisys/actions/runs/38733441910).
+Local evidence записано 15-10-26 15-09-12 и 15-27-42, CI result — 15-18-32 (Europe/Moscow). CWD для local checks: repository root, кроме fresh clone. Первоначальный code SHA: `afe9ba3`; расширенный test-harness typecheck/test/build проверен на `dacef1f`; предыдущий PR CI SHA: `92cafce4138eeb8f19454576a0b239ff7b8acb3f`. Evidence pointers: output команд текущего Codex task и [GitHub Actions run 38733974840](https://github.com/ipastin/phisys/actions/runs/38733974840). CI для текущего PR head проверяется в PR Checks.
 
 | Check / action | Result | Evidence / limit |
 | --- | --- | --- |
 | `node --version`, `pnpm --version` под временной Node 24.22.0 | `pass` | `v24.22.0`, `12.13.0`; системный default Node остаётся `24.17.0` |
 | Fresh clone `pnpm install --frozen-lockfile`, `pnpm build` | `pass` | изолированный временный clone; lock SHA-256 до/после `0f3e8dd8fb99f9f83ded1837b09bce04d7ed00588d9e6331761990376d85b03d`; build 1/1 |
-| `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | `pass` | exact Node command, zero exit; formatter scoped to new first-party files |
-| `pnpm test:unit`, `pnpm test:architecture`, `pnpm test`, `pnpm build` | `pass` | 2 unit assertions; 15 architecture cases; 1 real build target; negative cases exit nonzero |
+| `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | `pass` | exact Node command, zero exit на `dacef1f`; strict TS теперь охватывает source и test harness, fixtures исключены намеренно |
+| `pnpm test:unit`, `pnpm test:architecture`, `pnpm test`, `pnpm build` | `pass` | на `dacef1f`: 2 unit assertions; 15 architecture cases; 1 real build target; negative cases exit nonzero |
 | `pnpm audit --audit-level high` | `pass` | registry response: no known vulnerabilities |
 | `gitleaks git . --redact` | `pass` | Gitleaks `8.30.1`, checked Darwin asset SHA-256, 14 commits scanned, no findings |
 | `git diff --cached --check` | `pass` | implementation code commit had no whitespace errors |
-| PR CI `validate` на `b54d3ec` | `pass` | `pull_request` run 38733441910: exact runtime, frozen install, lint, format, typecheck, tests, build, audit и Gitleaks — все steps success |
+| PR CI `validate` на `92cafce` | `pass` | `pull_request` run 38733974840: exact runtime, frozen install, lint, format, typecheck, tests, build, audit и Gitleaks — все steps success |
 | Fork PR runtime | `needs_review` | workflow uses `pull_request`, `contents: read`, no secrets/deploy; отдельный fork run не запускался |
 
 ## Decisions
@@ -78,6 +78,7 @@ Local evidence записано 15-10-26 15-09-12, CI result — 15-10-26 15-18-
 ## Surprises / Open questions
 
 - Первый architecture test обнаружил пропуск tsconfig aliases. `extractTSConfig` + fixture `baseUrl` закрыли его; затем все 15 cases прошли.
+- Финальная проверка нашла, что первый `typecheck` не охватывал test harness. Добавлен отдельный strict `tsconfig.tests.json`; fixture modules исключены, поскольку содержат намеренно запрещённые imports.
 - GitHub API возвращает `404 Branch not protected` для `main`. CI запускается на PR, но обязательность checks перед merge не настроена; настройка protection вне этого scope.
 - Fork PR с read-only token пока не запускался. Статическая конфигурация не равна runtime evidence.
 - Системный Node остаётся `24.17.0`; локальные проверки проводились под временным exact runtime.
@@ -88,4 +89,4 @@ Local evidence записано 15-10-26 15-09-12, CI result — 15-10-26 15-18-
 
 ## Outcome / Next step
 
-Локальные M0 gates выполнены, [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт и PR CI на `b54d3ec` прошёл. CI для final PR head отражается в PR Checks и требует проверки перед merge. Fork PR runtime остаётся `needs_review`; branch protection не настроен. Merge и deploy остаются отдельными решениями.
+Локальные M0 gates выполнены, [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт и PR CI на `92cafce` прошёл. После расширения `typecheck` CI для final PR head отражается в PR Checks и требует проверки перед merge. Fork PR runtime остаётся `needs_review`; branch protection не настроен. Merge и deploy остаются отдельными решениями.
