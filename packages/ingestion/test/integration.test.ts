@@ -193,6 +193,117 @@ describe('M1 ingestion contract', () => {
     ).toBe(1);
   });
 
+  test('concurrent records for one event retain both Raw claims and one unresolved conflict', async () => {
+    const [a, b] = await Promise.all([
+      ingest(
+        app,
+        measurement({
+          connectorId: 'race-a',
+          externalRecordId: 'a',
+          eventKey: 'concurrent-event',
+        }),
+      ),
+      ingest(
+        app,
+        measurement({
+          connectorId: 'race-b',
+          externalRecordId: 'b',
+          eventKey: 'concurrent-event',
+          payload: {
+            ...measurement().payload,
+            value: { kind: 'quantity', originalValue: 81, originalUnit: 'kg' },
+          },
+        }),
+      ),
+    ]);
+    expect([a.state, b.state].sort()).toEqual(['imported', 'needs_review']);
+    expect(
+      (
+        await withPerson(app, personId, (db) =>
+          db.query(
+            "SELECT id FROM health.fact WHERE event_key='concurrent-event' AND state='current'",
+          ),
+        )
+      ).rowCount,
+    ).toBe(1);
+    expect(
+      (
+        await withPerson(app, personId, (db) =>
+          db.query(
+            "SELECT id FROM health.conflict WHERE event_key='concurrent-event' AND state='unresolved'",
+          ),
+        )
+      ).rowCount,
+    ).toBe(1);
+    expect(
+      (
+        await withPerson(app, personId, (db) =>
+          db.query('SELECT id FROM source.raw_record WHERE id IN ($1,$2)', [
+            a.rawId,
+            b.rawId,
+          ]),
+        )
+      ).rowCount,
+    ).toBe(2);
+  });
+
+  test('source identity pins event key across versions and rejects out-of-range versions', async () => {
+    const first = measurement({
+      externalRecordId: 'pinned-record',
+      eventKey: 'pinned-original',
+    });
+    expect((await ingest(app, first)).state).toBe('imported');
+    const changed = await ingest(app, {
+      ...first,
+      version: 2,
+      eventKey: 'pinned-new',
+    });
+    expect(changed).toMatchObject({
+      state: 'quarantined',
+      reason: 'event_key_changed',
+    });
+    expect(
+      (
+        await withPerson(app, personId, (db) =>
+          db.query(
+            "SELECT id FROM health.fact WHERE event_key='pinned-original' AND state='current'",
+          ),
+        )
+      ).rowCount,
+    ).toBe(1);
+    expect(
+      (
+        await withPerson(app, personId, (db) =>
+          db.query(
+            "SELECT id FROM health.fact WHERE event_key='pinned-new' AND state='current'",
+          ),
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await ingest(app, {
+          ...first,
+          version: 3,
+          operation: 'delete',
+          payload: {},
+        })
+      ).state,
+    ).toBe('imported');
+    expect(
+      (
+        await withPerson(app, personId, (db) =>
+          db.query(
+            "SELECT id FROM health.fact WHERE event_key='pinned-original' AND state='current'",
+          ),
+        )
+      ).rowCount,
+    ).toBe(0);
+    await expect(
+      ingest(app, measurement({ version: 2_147_483_648 })),
+    ).rejects.toMatchObject({ code: 'invalid_identity' });
+  });
+
   test('a supported fact is not silently superseded when another source still supports it', async () => {
     const first = measurement({
       externalRecordId: 'shared-a',

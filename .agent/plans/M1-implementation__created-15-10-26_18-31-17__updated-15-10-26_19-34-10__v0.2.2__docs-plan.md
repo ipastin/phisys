@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M1 implementation evidence
 created: "15-10-26 18-31-17"
-updated: "15-10-26 19-11-13"
+updated: "15-10-26 19-34-10"
 timezone: Europe/Moscow
-version: 0.2.1
-commit: "docs(plan): add quarantine support regression evidence"
+version: 0.2.2
+commit: "docs(plan): record review fixes and CI evidence"
 status: in_progress
 ---
 
@@ -52,11 +52,13 @@ The minimum M1 slice uses `identity`, `source`, `health`, and `jobs` PostgreSQL 
 - [x] M1.3: deterministic versioned 90-day synthetic profile with missing week, source transition, outlier, sparse labs, symptom and conflict.
 - [x] M1.4: Raw → validation → canonical transaction, exact identity/version retry, explicit cross-source event dedupe, conflict and quarantine, correction/tombstone support reassessment.
 - [x] M1.5: manual weight/BP/observation/symptom adapter through the same SourceRecord route, including BP component tombstones; root scripts and CI DB service updated.
-- [ ] PR CI and review on exact pushed head. No merge or deploy authorization.
+- [x] PR CI run `38767837343` passed on head `82e4fbe688f3fd35e085e8536269973ca35a697e`, before review fixes.
+- [x] CodeRabbit and Codex review of that head received; rollback handling, concurrent event locking, fixed event key and int32 version range addressed with tests.
+- [ ] CI and review on the new pushed head after review fixes. No merge or deploy authorization.
 
 ## Validation evidence
 
-All commands below used repository root as cwd and a working tree based on `12bd8dfc274c6bb8dccfddf9c83d335195b11352`; the exact final commit SHA and CI run belong in PR evidence. Tests use synthetic data only.
+All commands below used repository root as cwd and a working tree based on `12bd8dfc274c6bb8dccfddf9c83d335195b11352`. CI evidence is tied to the exact SHA shown in each row; the newest PR head is checked separately. Tests use synthetic data only.
 
 | Time, Europe/Moscow | Command / action | Result | Evidence |
 | --- | --- | --- | --- |
@@ -66,7 +68,10 @@ All commands below used repository root as cwd and a working tree based on `12bd
 | 15-10-26 19-06 | `DATABASE_URL=... M1_DISPOSABLE_DB=1 pnpm test:db` on fresh localhost PostgreSQL 16 | `pass` | 3/3 DB, 7/7 ingestion, 2/2 manual integration tests; migration up/down/reapply in first suite |
 | 15-10-26 19-10 | `DATABASE_URL=... M1_DISPOSABLE_DB=1 pnpm exec vitest run packages/ingestion/test/integration.test.ts` | `pass` | 8/8 ingestion tests, including quarantined correction support regression |
 | 15-10-26 19-06 | `pnpm install --frozen-lockfile`; `pnpm audit --audit-level high` | `pass` | lockfile current; no known vulnerabilities |
-| Pending PR | CI on pinned Node `24.22.0`, secret scan | `not_run` | Current local Node is `24.17.0`; CI result must be read on exact PR head |
+| 15-10-26 19-18 | GitHub Actions run `38767837343` on `82e4fbe688f3fd35e085e8536269973ca35a697e` | `pass` | Pinned Node `24.22.0`, frozen install, lint, format, typecheck, unit/architecture/DB suites, build, audit and secret scan all passed |
+| 15-10-26 19-28 | `pnpm lint`, `pnpm typecheck`, `pnpm test:unit` after review fixes | `pass` | Includes rollback-failure unit test |
+| 15-10-26 19-33 | `DATABASE_URL=... M1_DISPOSABLE_DB=1 pnpm test:db` on fresh PostgreSQL 16 | `pass` | 3/3 DB, 10/10 ingestion, 2/2 manual; includes event concurrency, key lifecycle and int32 regression |
+| Pending new PR head | CI on pinned Node `24.22.0` and renewed review | `not_run` | The prior successful run does not certify the review-fix commit |
 
 ## Decision and risk log
 
@@ -74,11 +79,13 @@ All commands below used repository root as cwd and a working tree based on `12bd
 - The M1 domain entry point is a library, with no auth/API surface. It requires a caller to supply a person UUIDv7 and a domain-scoped DB connection; production identity binding, credentials and cloud provisioning remain outside M1 under D3. Do not expose this function directly to a client.
 - `source.raw_record` stores the full received envelope as JSONB and is immutable. Invalid time retains its original string in Raw with nullable `recorded_at`, then is quarantined. Unsupported concept/unit, version collision and semantic/value conflict do not create a verified clinical fact.
 - A quarantined or conflicting correction does not remove the support of an earlier accepted source version; only an accepted later tombstone does. The regression is covered by a DB integration test.
+- A source record cannot change its `eventKey` between versions; changes are retained in Raw and quarantined. Concurrent records for one event serialize before canonical lookup. Source version is bounded to PostgreSQL `integer`. These boundaries have DB integration tests.
+- Transaction rollback failure does not hide the original error; the broken PostgreSQL client is discarded. A unit test covers the failure path.
 - Local tests demonstrate role/RLS behavior and transaction atomicity on PostgreSQL 16. They do not prove production authorization, retention/export/delete policy, clinical terminology coverage or full EVALS §3 medication/document cases.
 
 ## Outcome
 
-M1 behavior is locally reproducible on a disposable database. The next step is PR CI/review on the pushed head, followed by owner-controlled merge as a separate action. Production use remains outside this milestone.
+M1 behavior is locally reproducible on a disposable database. The next step is CI/review on the review-fix PR head, followed by owner-controlled merge as a separate action. Production use remains outside this milestone.
 
 ## Risks and recovery
 

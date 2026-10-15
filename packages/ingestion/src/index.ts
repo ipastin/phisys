@@ -44,6 +44,7 @@ export type IngestionResult =
 export type QuarantineReason =
   | DomainError['code']
   | 'stale_version'
+  | 'event_key_changed'
   | 'invalid_operation'
   | 'malformed_payload';
 
@@ -118,11 +119,14 @@ export async function ingest(
     !record.connectorId ||
     !record.externalRecordId ||
     !Number.isSafeInteger(record.version) ||
-    record.version < 1
+    record.version < 1 ||
+    record.version > 2_147_483_647 ||
+    (record.eventKey !== undefined &&
+      (typeof record.eventKey !== 'string' || record.eventKey.length === 0))
   )
     throw new DomainError(
       'invalid_identity',
-      'Connector, external record ID and positive version are required',
+      'Connector, external record ID, nonempty event key and int32 version are required',
     );
   return withPerson(pool, record.personId, async (db) => {
     const sourceId = uuidv7();
@@ -154,7 +158,7 @@ export async function ingest(
       throw new Error('Source record identity was not available');
 
     const prior = await db.query<Row>(
-      'SELECT id, version, content_hash FROM source.raw_record WHERE person_id=$1 AND record_id=$2 ORDER BY version DESC, ingested_at DESC',
+      "SELECT id, version, content_hash, payload->>'eventKey' AS prior_event_key FROM source.raw_record WHERE person_id=$1 AND record_id=$2 ORDER BY version DESC, ingested_at DESC",
       [record.personId, recordId],
     );
     const contentHash = hash(record);
@@ -220,6 +224,16 @@ export async function ingest(
 
     const eventKey =
       record.eventKey ?? `${record.connectorId}:${record.externalRecordId}`;
+    const first = prior.rows.at(-1);
+    if (
+      first &&
+      (first.prior_event_key ??
+        `${record.connectorId}:${record.externalRecordId}`) !== eventKey
+    )
+      return quarantine(db, record.personId, rawId, 'event_key_changed');
+    await db.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      `${record.personId}:event:${eventKey}`,
+    ]);
     const current = await db.query<Row>(
       'SELECT id, concept_id, kind, value, effective, origin_raw_id FROM health.fact WHERE person_id=$1 AND event_key=$2 AND state=$3 FOR UPDATE',
       [record.personId, eventKey, 'current'],

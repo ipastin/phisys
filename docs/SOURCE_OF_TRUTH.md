@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Source of Truth
 created: "15-10-26 09-37-26"
-updated: "15-10-26 19-16-34"
+updated: "15-10-26 19-34-10"
 timezone: Europe/Moscow
-version: 0.2.17
-commit: "docs(sources): link M1 implementation artifacts"
+version: 0.2.18
+commit: "docs(sources): update M1 implementation evidence link"
 status: proposed
 ---
 
@@ -21,7 +21,7 @@ repository — [ipastin/phisys](https://github.com/ipastin/phisys); выбран
 | --- | --- | --- |
 | Project Specification Pack `0.4.0` | [Project README](project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md), [manifest](project-spec/v0.4.0/manifest.json) | Предоставлен владельцем; 18 Markdown-документов. Current product/architecture/engineering source. |
 | Product Design Specification Pack `0.2.0` | [Design README](product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md), [manifest](product-design/v0.2.0/manifest.json) | Предоставлен владельцем; 28 Markdown-документов. Current design specification. |
-| Root AGENTS/PLANS `0.2.9`, source index `0.2.17`; onboarding/M0 template `0.2.0`; M0 audit/approved plan `0.3.2` | Ссылки ниже | Compact instructions и review artifacts; подчиняются оригинальным sources. |
+| Root AGENTS/PLANS `0.2.9`, source index `0.2.18`; onboarding/M0 template `0.2.0`; M0 audit/approved plan `0.3.2` | Ссылки ниже | Compact instructions и review artifacts; подчиняются оригинальным sources. |
 | Figma | Approved file/node URLs ещё не указаны | `missing` для visual/interaction implementation; не выдумывай design authority. |
 | История чатов / старые packs | В Git как current release не импортированы | Только context/history, не замена оригиналов. |
 
@@ -132,4 +132,4 @@ M5 Hardening: provenance/audit/security/evals/export/delete → Personal Beta ga
 - [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) — утверждённый scope/toolchain/checks; на момент approval старт был отложен.
 - [M0 implementation evidence](../.agent/plans/M0-foundation-implementation__created-15-10-26_15-09-12__updated-15-10-26_17-32-04__v0.2.4__docs-plan.md) — выполнение после отдельной команды владельца; локальные checks, PR CI и принятые владельцем исключения.
 - [M1 approved ExecPlan](../.agent/plans/M1-health-data-pipeline__created-15-10-26_18-06-16__updated-15-10-26_18-20-16__v0.2.0__docs-plan.md) — утверждённые D1–D3 и Steps 03–07; импортирован из отдельной плановой ветки без изменения исходного approval.
-- [M1 implementation evidence](../.agent/plans/M1-implementation__created-15-10-26_18-31-17__updated-15-10-26_19-11-13__v0.2.1__docs-plan.md) — M1.0 schema/contract assertions, локальные проверки и ограничения; PR CI фиксируется отдельно на точном head.
+- [M1 implementation evidence](../.agent/plans/M1-implementation__created-15-10-26_18-31-17__updated-15-10-26_19-34-10__v0.2.2__docs-plan.md) — M1.0 schema/contract assertions, локальные проверки и ограничения; PR CI фиксируется на точном head.

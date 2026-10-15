@@ -33,6 +33,7 @@ export async function withPerson<T>(
   )
     throw new Error('A UUIDv7 person identity is required');
   const db = await pool.connect();
+  let rollbackFailure: Error | undefined;
   try {
     await db.query('BEGIN');
     await db.query("SELECT set_config('app.person_id', $1, true)", [personId]);
@@ -40,9 +41,16 @@ export async function withPerson<T>(
     await db.query('COMMIT');
     return result;
   } catch (error) {
-    await db.query('ROLLBACK');
+    try {
+      await db.query('ROLLBACK');
+    } catch (rollbackError) {
+      rollbackFailure =
+        rollbackError instanceof Error
+          ? rollbackError
+          : new Error('Rollback failed', { cause: rollbackError });
+    }
     throw error;
   } finally {
-    db.release();
+    db.release(rollbackFailure);
   }
 }
