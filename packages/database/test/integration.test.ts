@@ -13,13 +13,22 @@ const up = await readFile(
   new URL('../migrations/0001_up.sql', import.meta.url),
   'utf8',
 );
+const analyticsUp = await readFile(
+  new URL('../migrations/0002_up.sql', import.meta.url),
+  'utf8',
+);
 const down = await readFile(
   new URL('../migrations/0001_down.sql', import.meta.url),
+  'utf8',
+);
+const analyticsDown = await readFile(
+  new URL('../migrations/0002_down.sql', import.meta.url),
   'utf8',
 );
 
 beforeAll(async () => {
   await pool.query(up);
+  await pool.query(analyticsUp);
 });
 afterAll(async () => {
   await pool.end();
@@ -138,11 +147,17 @@ describe('M1 PostgreSQL foundation', () => {
         ])
       ).rowCount,
     ).toBe(0);
+    await pool.query(analyticsDown);
     await pool.query(down);
     await pool.query(up);
+    await pool.query(analyticsUp);
     expect(
       (await pool.query("SELECT to_regclass('health.fact') AS table_name"))
         .rows[0]?.table_name,
     ).toBe('health.fact');
+    expect(
+      (await pool.query("SELECT to_regrole('myphisys_analytics') AS role_name"))
+        .rows[0]?.role_name,
+    ).toBe('myphisys_analytics');
   });
 });
