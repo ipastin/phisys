@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Codex instructions
 created: "15-10-26 09-37-26"
-updated: "15-10-26 09-37-26"
+updated: "15-10-26 11-09-37"
 timezone: Europe/Moscow
-version: 0.1.0
-commit: "docs(codex): add compact repository instructions"
+version: 0.2.0
+commit: "docs(codex): reconcile instructions with accepted specifications"
 ---
 
 # MyPhisys
@@ -17,13 +17,15 @@ Product domain: https://phisys.cloud. Не переименовывай брен
 
 1. Прочитай [SOURCE_OF_TRUTH](docs/SOURCE_OF_TRUTH.md): доступные источники, их статус и конфликты.
 2. Проверь текущую ветку, diff, структуру и scoped instructions. Сохраняй чужие изменения.
-3. Читай только документы по задаче. Отсутствующий документ — пробел, а не разрешение придумать требования.
+3. Из текущих source packs прочитай `00 README`, `14 AGENTS`, `02 ARCHITECTURE`, релевантный domain spec, `13 ADR`, `11 IMPLEMENTATION` и `12 EVALS`; `15–17` — когда задача затрагивает бренд, models или surfaces. Точные ссылки в source index.
 4. Для многошаговых, cross-package, schema, safety/privacy изменений веди ExecPlan по [.agent/PLANS.md](.agent/PLANS.md).
 
 ## Ограничения архитектуры
 
-Ниже — рабочие ограничения handoff. Их соответствие полным спецификациям ещё требует сверки;
-реестр ADR/INV этим списком не заменяется. Конфликт фиксируй, не ослабляй границы молча.
+Ниже — компактная выборка из Project Spec `14 AGENTS`, `02 ARCHITECTURE` и accepted ADR.
+Полный registry — 31 invariant и 170 ADR в импортированном Project Spec. При конфликте:
+explicit invariant → accepted ADR → domain specification → implementation convenience.
+Конфликт фиксируй; source documents не переписывай молча.
 
 - Canonical Health Store хранит подтверждённые health facts; AI inference автоматически фактом не становится.
 - У каждого факта сохраняются provenance, единицы, временная семантика и epistemic state.
@@ -39,11 +41,13 @@ Product domain: https://phisys.cloud. Не переименовывай брен
 - Surface Strategy распределяет capabilities по задачам surfaces; feature parity не является целью.
   Detailed health disclosure не включается по умолчанию на lock screen, widget или watch.
 
+Текущий build order по Project Spec `11 IMPLEMENTATION`: M0 Foundation → M1 Health Data Pipeline
+→ M2 Health Intelligence (`What Changed`) → M3 Product Experience → M4 Clinical Data + AI → M5 Hardening.
+
 ## Scope и разрешения
 
-- Текущий handoff содержит документацию; onboarding и M0 template не разрешают application implementation.
+- Этот PR содержит документацию и source packs; onboarding и M0 template не разрешают application implementation.
 - Работай в отдельной `codex/*` ветке и через PR. Не создавай и не меняй `main` напрямую.
-  Если `main` отсутствует, подготовь локальную ветку и дождись initial commit владельца.
 - Merge, deploy, DNS/domain changes, secrets, Figma/shared-system writes требуют отдельного разрешения.
 - Для изменения canonical model, safety/privacy, accepted ADR, IA или утверждённого UX сначала покажи decision и trade-offs.
   Обычные implementation details внутри уже разрешённого scope выполняй без повторного согласования.
