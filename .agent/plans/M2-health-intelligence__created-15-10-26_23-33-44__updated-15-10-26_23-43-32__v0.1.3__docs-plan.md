@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Health Intelligence ExecPlan
 created: "15-10-26 23-33-44"
-updated: "15-10-26 23-40-49"
+updated: "15-10-26 23-43-32"
 timezone: Europe/Moscow
-version: 0.1.2
-commit: "docs(plan): record M2 readiness evidence"
+version: 0.1.3
+commit: "docs(plan): record M2 draft PR"
 status: draft
 ---
 
@@ -112,7 +112,7 @@ EVALS §4 golden cases A01–A17 and A20 are the mapping target where applicable
 - [x] 15-10-26 23-33 Europe/Moscow — fetched `origin/main`, verified `ade7b91548c7a038c264681070ab9ee87d819a13`, clean checkout and new branch from that SHA.
 - [x] 15-10-26 23-33 — read root rules, ExecPlan contract, current Project Spec sections and merged M1 packages/tests/fixture; mapped M1 inputs and missing M2 consumer.
 - [x] 15-10-26 23-40 — plan structure, metadata, links, scope-only status and requested negative-case coverage checked on working tree after independent review corrections.
-- [ ] Draft PR on final docs-only head; record its exact SHA/CI result in PR review evidence.
+- [x] 15-10-26 23-43 — docs-only draft [PR #6](https://github.com/ipastin/phisys/pull/6) opened against `main`; exact final head/CI is tracked in PR review evidence after this status update.
 - [ ] Owner review of options/open decisions and separate start of first implementation slice.
 - [ ] Steps 08–14 behavior checks: `not_run` (planning stage).
 
@@ -121,6 +121,7 @@ EVALS §4 golden cases A01–A17 and A20 are the mapping target where applicable
 | 15-10-26 23-32 | `git fetch origin main`; `git status --porcelain`; `git rev-parse origin/main`; repository root, base `ade7b91548c7a038c264681070ab9ee87d819a13` | `pass` | Fetch succeeded; clean original checkout; new branch created at exact merge SHA. |
 | 15-10-26 23-40 | Python plan audit for 13 sections, six metadata keys, 13 resolving local links, trailing whitespace, local-path scan, requested cases, and single new file; repository root, working tree based on `ade7b91548c7a038c264681070ab9ee87d819a13` | `pass` | Command output: `PASS: 13 sections; metadata; local links; trailing whitespace; public-path scan; docs-only status; requested coverage`. Re-run after final metadata edit. |
 | 15-10-26 23-39 | Independent read-only review of draft against M1 code and Project Spec; same base | `pass` for review process; findings corrected | Four findings: concept gaps, historical snapshot limit, duplicate receipt count, read-only DB boundary. No runtime test. |
+| 15-10-26 23-43 | GitHub draft [PR #6](https://github.com/ipastin/phisys/pull/6), base `ade7b91548c7a038c264681070ab9ee87d819a13`, creation head `01d0f6c804d27cfe7784ccb7c9ccf3193c506411` | `pass` for PR creation | GitHub response: open, draft, one Markdown file; final head after this metadata commit must be verified separately. |
 | Future implementation | `pnpm` gates and synthetic DB/evals on implementation head | `not_run` | M2.0 is documentation only. |
 
 ## Decision log
@@ -149,4 +150,4 @@ Plan is a single new Markdown file; rerun links/metadata checks before pushing. 
 
 ## Outcomes / Retrospective
 
-M2.0 ends when the standalone draft and docs-only PR are reviewable, with source map, checks and exact base/head evidence recorded. No M2 implementation or runtime behavior is claimed. Next authorized work, after owner selects D-M2-1 and starts implementation, is the Step 08–09 vertical slice with one synthetic `sleep_duration` metric and quality gate.
+M2.0 deliverable is the standalone draft and docs-only [PR #6](https://github.com/ipastin/phisys/pull/6), reviewable after the final head/CI check. Source map and artifact checks are recorded above; M2 runtime behavior remains `not_run`. Next authorized work, after owner selects D-M2-1/D-M2-5 and starts implementation, is the Step 08–09 vertical slice with one synthetic `sleep_duration` metric and quality gate.
