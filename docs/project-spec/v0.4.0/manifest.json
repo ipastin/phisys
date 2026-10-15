@@ -1,0 +1,28 @@
+{
+  "name": "MyPhisys Project Specification Pack",
+  "version": "0.4.0",
+  "updated": "10-10-26 04-03-47",
+  "commit": "docs(product): add MyPhisys surface delivery architecture",
+  "documents": [
+    "00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "01_PRODUCT__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "02_ARCHITECTURE__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "03_DATA_MODEL__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "04_ANALYTICS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "05_AGENT_RUNTIME__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "06_SKILLS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "07_CONTEXT_MEMORY__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "08_SAFETY__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "09_CONNECTORS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "10_UX__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "12_EVALS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "13_ADR__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "14_AGENTS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md",
+    "15_BRAND__created-06-10-26_17-26-44__updated-10-10-26_04-03-47__v0.4.0.md",
+    "16_MODEL_STRATEGY__created-10-10-26_11-38-32__updated-10-10-26_04-03-47__v0.4.0.md",
+    "17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-10-10-26_04-03-47__v0.4.0.md"
+  ],
+  "accepted_adr_count": 170,
+  "invariant_count": 31
+}
