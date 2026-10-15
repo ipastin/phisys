@@ -29,7 +29,7 @@ export async function checkArchitecture(
       outputType: 'json',
       tsConfig: { fileName: tsConfig },
       doNotFollow: { path: 'node_modules' },
-      exclude: { path: '(^|/)(dist|node_modules)/' },
+      exclude: { path: '(^|/)dist/' },
     },
     undefined,
     { tsConfig: extractTSConfig(tsConfig) },

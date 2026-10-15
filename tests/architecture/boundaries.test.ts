@@ -46,6 +46,22 @@ describe('architecture boundaries', () => {
     );
     expect(result.status, result.stderr).not.toBe(0);
     expect(result.stderr).toContain(rule);
+    if (variant === 'provider')
+      expect(result.stderr).toContain('node_modules/openai');
+  });
+
+  test('rejects Azure, Bedrock and Vertex SDK imports from skills', () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        cli,
+        `${fixture}/packages/skills/src/providers.ts`,
+        `${fixture}/tsconfig.json`,
+      ],
+      { cwd: root, encoding: 'utf8' },
+    );
+    expect(result.status, result.stderr).not.toBe(0);
+    expect(result.stderr.match(/skills-model-gateway/g)).toHaveLength(3);
   });
 
   test('checks the current first-party graph with the built package', () => {

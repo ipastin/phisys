@@ -3,8 +3,10 @@ import type { IForbiddenRuleType } from 'dependency-cruiser';
 const packagePath = (name: string) =>
   `(?:^|/)packages/(?:${name})/|^@myphisys/(?:${name})(?:/|$)`;
 
-const providerPath =
-  '(?:^|/)node_modules/(?:openai|@anthropic-ai/sdk|@google/genai)(?:/|$)|^(?:openai|@anthropic-ai/sdk|@google/genai)(?:/|$)';
+// shortcut: patterns cover the five approved provider paths; extend them when a new provider is approved.
+const providerPackage =
+  'openai|@anthropic-ai/[^/]+|@google/genai|@azure/[^/]+|@aws-sdk/client-bedrock(?:-runtime)?|@google-cloud/[^/]+|aws-sdk';
+const providerPath = `^(?:${providerPackage})(?:/|$)|(?:^|/)node_modules/(?:${providerPackage})(?:/|$)`;
 
 export const forbidden: IForbiddenRuleType[] = [
   {
