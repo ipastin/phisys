@@ -4,6 +4,7 @@ import { checkArchitecture, sourceRoots } from './index.js';
 
 const [target, config] = process.argv.slice(2);
 const paths = target ? [resolve(target)] : sourceRoots(process.cwd());
+// shortcut: repository checks use root tsconfig aliases; add per-package resolution when M1 needs it.
 const tsConfig = resolve(config ?? 'tsconfig.json');
 
 try {
