@@ -1,11 +1,11 @@
 ---
 title: MyPhisys — M0 Foundation implementation evidence
 created: "15-10-26 15-09-12"
-updated: "15-10-26 15-13-38"
+updated: "15-10-26 15-18-32"
 timezone: Europe/Moscow
-version: 0.1.1
-commit: "docs(plan): remove local path from M0 evidence"
-status: in_progress
+version: 0.2.0
+commit: "docs(plan): record M0 PR CI result"
+status: needs_review
 ---
 
 # M0 Foundation implementation
@@ -50,12 +50,12 @@ Callers до M0 отсутствовали. Новый root `test:architecture` 
 - [x] M0.0: `origin/main`, branch, diff, scoped instructions и exact pins перепроверены.
 - [x] M0.1: workspace, lockfile и реальный package build созданы; frozen install из fresh clone пройден.
 - [x] M0.2: checker и negative corpus проходят; current first-party graph проверен.
-- [ ] M0.3: CI workflow подготовлен; PR run и fork PR runtime ещё не проверены.
-- [ ] M0.4: implementation PR и final review ожидают push/CI.
+- [x] M0.3: PR CI `validate` прошёл на `b54d3ec`; fork PR runtime остаётся `needs_review`.
+- [x] M0.4: [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт; diff и local evidence проверены.
 
 ## Validation / Acceptance
 
-Evidence записано 15-10-26 15-09-12 (Europe/Moscow). CWD для local checks: repository root, кроме fresh clone. Code SHA: `afe9ba3`; последний documentation/comment commit будет указан в PR. Evidence pointers: output команд текущего Codex task и будущий PR Checks tab.
+Local evidence записано 15-10-26 15-09-12, CI result — 15-10-26 15-18-32 (Europe/Moscow). CWD для local checks: repository root, кроме fresh clone. Code SHA: `afe9ba3`; PR CI SHA: `b54d3ece18b74ccc5bb1f8c79185e643d010d591`. Evidence pointers: output команд текущего Codex task и [GitHub Actions run 38733441910](https://github.com/ipastin/phisys/actions/runs/38733441910).
 
 | Check / action | Result | Evidence / limit |
 | --- | --- | --- |
@@ -66,7 +66,8 @@ Evidence записано 15-10-26 15-09-12 (Europe/Moscow). CWD для local ch
 | `pnpm audit --audit-level high` | `pass` | registry response: no known vulnerabilities |
 | `gitleaks git . --redact` | `pass` | Gitleaks `8.30.1`, checked Darwin asset SHA-256, 14 commits scanned, no findings |
 | `git diff --cached --check` | `pass` | implementation code commit had no whitespace errors |
-| PR CI on final SHA; fork PR runtime | `needs_review` | workflow uses `pull_request`, `contents: read`, no secrets/deploy; actual run pending |
+| PR CI `validate` на `b54d3ec` | `pass` | `pull_request` run 38733441910: exact runtime, frozen install, lint, format, typecheck, tests, build, audit и Gitleaks — все steps success |
+| Fork PR runtime | `needs_review` | workflow uses `pull_request`, `contents: read`, no secrets/deploy; отдельный fork run не запускался |
 
 ## Decisions
 
@@ -87,4 +88,4 @@ Evidence записано 15-10-26 15-09-12 (Europe/Moscow). CWD для local ch
 
 ## Outcome / Next step
 
-Локальные M0 gates выполнены. Push branch, открыть implementation PR, дождаться CI на финальном SHA и обновить статус `needs_review` по фактическому результату. Merge и deploy остаются отдельными решениями.
+Локальные M0 gates выполнены, [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт и PR CI на `b54d3ec` прошёл. CI для final PR head отражается в PR Checks и требует проверки перед merge. Fork PR runtime остаётся `needs_review`; branch protection не настроен. Merge и deploy остаются отдельными решениями.
