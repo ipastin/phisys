@@ -1,11 +1,11 @@
 ---
 title: MyPhisys — M0 Foundation implementation evidence
 created: "15-10-26 15-09-12"
-updated: "15-10-26 17-19-27"
+updated: "15-10-26 17-32-04"
 timezone: Europe/Moscow
-version: 0.2.3
-commit: "docs(plan): record reviewed M0 checks"
-status: needs_review
+version: 0.2.4
+commit: "docs(plan): record owner M0 exceptions"
+status: ready_for_merge_with_exceptions
 ---
 
 # M0 Foundation implementation
@@ -16,7 +16,7 @@ status: needs_review
 
 ## Status / Authorization
 
-Владелец отдельно запустил implementation 15-10-26. Утверждённый [M0 scope](M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) остаётся authority; этот файл хранит progress и evidence реализации. Base `origin/main`: `35832a4680db46879962278b4ff1e94eb7a93d1c`; implementation branch: `codex/m0-foundation`; первый code commit: `afe9ba3`. Merge, deploy, secrets и shared-system writes не разрешены.
+Владелец отдельно запустил implementation 15-10-26. Утверждённый [M0 scope](M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) остаётся authority; этот файл хранит progress и evidence реализации. Base `origin/main`: `35832a4680db46879962278b4ff1e94eb7a93d1c`; implementation branch: `codex/m0-foundation`; первый code commit: `afe9ba3`. 15-10-26 владелец принял два исключения для M0: fork PR runtime остаётся `not_run`, а финальный CodeRabbit review отсутствует из-за rate limit. Это решение не разрешает merge, deploy, secrets или shared-system writes.
 
 ## Context / Sources
 
@@ -51,7 +51,7 @@ Callers до M0 отсутствовали. Новый root `test:architecture` 
 - [x] M0.1: workspace, lockfile и реальный package build созданы; frozen install из fresh clone пройден.
 - [x] M0.2: checker и negative corpus проходят, включая installed provider; current first-party graph проверен.
 - [x] M0.3a: PR CI `validate` прошёл на code SHA `87f3556`.
-- [ ] M0.3b: fork PR runtime `not_run`: нет второго GitHub account или готового fork для пробного PR.
+- [ ] M0.3b: fork PR runtime `not_run`: нет второго GitHub account или готового fork для пробного PR; владелец явно принял это исключение 15-10-26, но проверка не считается пройденной.
 - [x] M0.4: [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт; diff и local evidence проверены.
 
 ## Validation / Acceptance
@@ -70,7 +70,9 @@ Local evidence записано 15-10-26 15-09-12, 15-27-42, 15-39-48 и 17-16-3
 | `git diff --cached --check` | `pass` | implementation code commit had no whitespace errors |
 | PR CI `validate` на `f15af71` | `pass` | исторический `pull_request` run 38735200223: exact runtime, frozen install, lint, format, typecheck, tests, build, audit и Gitleaks — все steps success |
 | PR CI `validate` на code SHA `87f3556` | `pass` | `pull_request` run 38750018899: тот же полный набор steps, включая 19 architecture cases; `v24.22.0` и pnpm `12.13.0` |
-| Fork PR runtime | `not_run` | workflow uses `pull_request`, `contents: read`, no secrets/deploy; нет второго GitHub account или готового fork, поэтому реальный fork run не выполнен |
+| PR CI `validate` на documentation SHA `8a6d37b` | `pass` | `pull_request` run 38750677664: все steps успешны; это не fork PR run |
+| Fork PR runtime | `not_run`; исключение принято владельцем | workflow uses `pull_request`, `contents: read`, no secrets/deploy; нет второго GitHub account или готового fork, поэтому реальный fork run не выполнен |
+| CodeRabbit review финального code/head | `not_reviewed`; исключение принято владельцем | GitHub status `success` имеет описание `Review rate limited`, поэтому не является содержательным review |
 
 ## Decisions
 
@@ -78,6 +80,7 @@ Local evidence записано 15-10-26 15-09-12, 15-27-42, 15-39-48 и 17-16-3
 - Exact Node запущен временно через `npm exec`; изменение системного runtime затронуло бы другие проекты. CI pin фиксирует Node `24.22.0`.
 - Approved scope document сохранён как историческое решение; implementation evidence вынесено сюда, чтобы не переименовывать утверждённый документ и все его ссылки.
 - `health-core` по умолчанию ограничен собственным package и `contracts`; новая допустимая внешняя зависимость потребует явного review и изменения правила в M1.
+- Владелец принял два evidence gaps для M0 — fork PR runtime и финальный CodeRabbit review — без изменения их фактических статусов. Independent AI review выполнен; human approval в GitHub не заявлен. Merge остаётся отдельным действием.
 
 ## Surprises / Open questions
 
@@ -96,4 +99,4 @@ Local evidence записано 15-10-26 15-09-12, 15-27-42, 15-39-48 и 17-16-3
 
 ## Outcome / Next step
 
-Локальные M0 gates и CI `validate` на code SHA `87f3556` выполнены, [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт, обязательный `validate` для `main` настроен. Independent AI review завершён, его finding исправлен. Fork PR runtime — `not_run`, CodeRabbit на последнем code SHA — `rate limited` без substantive review; оба ограничения остаются видимыми до решения о merge. Merge и deploy остаются отдельными решениями.
+Локальные M0 gates и CI `validate` на code SHA `87f3556` и documentation SHA `8a6d37b` выполнены, [implementation PR #3](https://github.com/ipastin/phisys/pull/3) открыт, обязательный `validate` для `main` настроен. Independent AI review завершён, его finding исправлен. Владелец принял исключения для fork PR runtime (`not_run`) и финального CodeRabbit review (`Review rate limited`); M0 готов к отдельному решению о merge с этими ограничениями. Merge и deploy не выполнялись и не разрешены этим решением.
