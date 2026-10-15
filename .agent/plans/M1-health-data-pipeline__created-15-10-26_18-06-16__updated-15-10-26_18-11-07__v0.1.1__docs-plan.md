@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M1 Health Data Pipeline ExecPlan
 created: "15-10-26 18-06-16"
-updated: "15-10-26 18-06-16"
+updated: "15-10-26 18-11-07"
 timezone: Europe/Moscow
-version: 0.1.0
-commit: "docs(plan): draft M1 health data pipeline"
+version: 0.1.1
+commit: "docs(plan): remove local path from M1 plan"
 status: draft
 ---
 
@@ -69,7 +69,7 @@ manual/synthetic connector → immutable Raw + SourceRecord
 
 ## Milestones / Concrete steps
 
-CWD для всех шагов: `/Users/igorpastin/Developer/phisys`. DAG: `M1.0 → M1.1 → M1.2 → M1.3 → M1.4 → M1.5`; независимые tests идут в том же шаге, что их implementation. Один PR на milestone допустим, если review остаётся предметным; merge каждого PR отдельно.
+CWD для всех шагов: repository root. DAG: `M1.0 → M1.1 → M1.2 → M1.3 → M1.4 → M1.5`; независимые tests идут в том же шаге, что их implementation. Один PR на milestone допустим, если review остаётся предметным; merge каждого PR отдельно.
 
 | ID | Work after authorization | Observable handoff |
 | --- | --- | --- |
