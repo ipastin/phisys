@@ -1,0 +1,18 @@
+{
+  "name": "@myphisys/ingestion",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vitest run test --exclude test/integration.test.ts"
+  },
+  "dependencies": {
+    "@myphisys/database": "workspace:*",
+    "@myphisys/health-core": "workspace:*"
+  }
+}

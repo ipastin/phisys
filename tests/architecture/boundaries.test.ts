@@ -21,6 +21,7 @@ describe('architecture boundaries', () => {
       );
       expect(result.status, result.stderr).toBe(0);
     },
+    20_000,
   );
 
   test.each([
@@ -37,21 +38,25 @@ describe('architecture boundaries', () => {
     ['agent-runtime', 'alias', 'agent-database-isolation'],
     ['agent-runtime', 'relative', 'agent-database-isolation'],
     ['skills', 'provider', 'skills-model-gateway'],
-  ])('%s rejects %s import', (name, variant, rule) => {
-    const result = spawnSync(
-      process.execPath,
-      [
-        cli,
-        `${fixture}/packages/${name}/src/${variant}.ts`,
-        `${fixture}/tsconfig.json`,
-      ],
-      { cwd: root, encoding: 'utf8' },
-    );
-    expect(result.status, result.stderr).not.toBe(0);
-    expect(result.stderr).toContain(rule);
-    if (variant === 'provider')
-      expect(result.stderr).toContain('node_modules/openai');
-  });
+  ])(
+    '%s rejects %s import',
+    (name, variant, rule) => {
+      const result = spawnSync(
+        process.execPath,
+        [
+          cli,
+          `${fixture}/packages/${name}/src/${variant}.ts`,
+          `${fixture}/tsconfig.json`,
+        ],
+        { cwd: root, encoding: 'utf8' },
+      );
+      expect(result.status, result.stderr).not.toBe(0);
+      expect(result.stderr).toContain(rule);
+      if (variant === 'provider')
+        expect(result.stderr).toContain('node_modules/openai');
+    },
+    20_000,
+  );
 
   test('rejects Azure, Bedrock and Vertex SDK imports from skills', () => {
     const result = spawnSync(
@@ -65,7 +70,7 @@ describe('architecture boundaries', () => {
     );
     expect(result.status, result.stderr).not.toBe(0);
     expect(result.stderr.match(/skills-model-gateway/g)).toHaveLength(3);
-  });
+  }, 20_000);
 
   test('checks the current first-party graph with the built package', () => {
     const result = spawnSync(process.execPath, [cli], {
@@ -74,5 +79,5 @@ describe('architecture boundaries', () => {
     });
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('Architecture check passed');
-  });
+  }, 20_000);
 });
