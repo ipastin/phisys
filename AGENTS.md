@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Codex instructions
 created: "15-10-26 09-37-26"
-updated: "15-10-26 13-00-59"
+updated: "15-10-26 13-15-25"
 timezone: Europe/Moscow
-version: 0.2.5
-commit: "docs(codex): link owner-reviewed M0 scope"
+version: 0.2.6
+commit: "docs(codex): link approved M0 plan"
 ---
 
 # MyPhisys
@@ -51,8 +51,8 @@ explicit invariant → accepted ADR → domain specification → implementation 
 
 ## Scope и разрешения
 
-- Текущий `main` содержит merged documentation и source packs. [Onboarding audit](docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-00-59__v0.2.1__docs-audit.md)
-  и [M0 review draft](.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-00-59__v0.2.1__docs-plan.md) не разрешают application implementation.
+- Текущий `main` содержит merged documentation и source packs. [Onboarding audit](docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-audit.md)
+  и [утверждённый M0 scope](.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-plan.md) не означают немедленного старта application implementation: владелец выбрал «старт позже».
 - Работай в отдельной `codex/*` ветке и через PR. Не создавай и не меняй `main` напрямую.
 - Merge, deploy, DNS/domain changes, secrets, Figma/shared-system writes требуют отдельного разрешения.
 - Для изменения canonical model, safety/privacy, accepted ADR, IA или утверждённого UX сначала покажи decision и trade-offs.

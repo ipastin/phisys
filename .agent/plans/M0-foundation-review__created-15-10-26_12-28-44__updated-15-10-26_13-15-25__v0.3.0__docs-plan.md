@@ -1,14 +1,14 @@
 ---
-title: MyPhisys — черновик review M0 Foundation
+title: MyPhisys — утверждённый scope M0 Foundation
 created: "15-10-26 12-28-44"
-updated: "15-10-26 13-00-59"
+updated: "15-10-26 13-15-25"
 timezone: Europe/Moscow
-version: 0.2.1
-commit: "docs(plan): record owner package graph choice"
-status: draft
+version: 0.3.0
+commit: "docs(plan): approve M0 scope with deferred start"
+status: approved
 ---
 
-# Черновик review M0 Foundation
+# Утверждённый scope M0 Foundation
 
 ## Цель
 
@@ -17,15 +17,15 @@ status: draft
 
 ## Статус и разрешение
 
-- Статус: `draft`; package graph согласован владельцем в текущем Codex chat, запись внесена 15-10-26 12-59-48 (Europe/Moscow); разрешения на implementation нет.
+- Статус: `approved` для описанного M0 scope; владелец выбрал «Утвердить scope, старт позже» в текущем Codex chat. Реализация не начата и отложена до отдельной команды на старт.
 - Base на момент onboarding: `ab7c2cab7d2f829fe5ae2870b0c26b41fed55a8a` (`main`/`origin/main`).
 - Ветка документации: `codex/m0-plan-review`; будущая ветка реализации: `codex/m0-foundation` от актуального `origin/main` после review документации.
-- Package graph approval: `approved` в ответе владельца на вопрос о трёх вариантах в текущем Codex chat. Exact toolchain/checks — `proposed`; полный executable scope и старт implementation требуют отдельного решения. Merge, deploy, production services, secrets и shared-system writes остаются отдельными решениями по [root AGENTS, «Scope»](../../AGENTS.md#scope-и-разрешения).
+- Scope approval: `approved` для root workspace, одного `architecture-guardrails` package, указанных pins/checks и границ реализации. Выбор записан 15-10-26 13-13-12 (Europe/Moscow); это время записи, не timestamp ответа. Старт implementation отложен владельцем. Merge, deploy, production services, secrets и shared-system writes остаются отдельными решениями по [root AGENTS, «Scope»](../../AGENTS.md#scope-и-разрешения).
 - Перед реализацией повторно проверить HEAD, diff, remote и scoped instructions. Этот base SHA — snapshot планирования, не разрешение на reset или перезапись изменений.
 
 ## Контекст и источники
 
-- [Onboarding audit](../../docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-00-59__v0.2.1__docs-audit.md) — входная доказательная база.
+- [Onboarding audit](../../docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-audit.md) — входная доказательная база.
 - Актуальные packs: [Project Spec 0.4.0](../../docs/project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md)
   и [Design Spec 0.2.0](../../docs/product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md).
 - Plan contract: [.agent/PLANS.md](../PLANS.md). Прежний [M0 template](M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md) остаётся историческим; его ожидание ещё не слитого docs PR опровергнуто текущим checkout.
@@ -34,9 +34,9 @@ status: draft
 
 ## Scope и границы
 
-**Согласованный package graph:** root workspace плюс один реальный `packages/architecture-guardrails`, который содержит import rules, исполняемую проверку и тесты; `tests/architecture` хранит synthetic allowed/forbidden graphs. Пустые `apps/*` и domain packages в M0 не создавать. Выбор владельца фиксирует graph, но не запускает реализацию.
+**Утверждённый package graph:** root workspace плюс один реальный `packages/architecture-guardrails`, который содержит import rules, исполняемую проверку и тесты; `tests/architecture` хранит synthetic allowed/forbidden graphs. Пустые `apps/*` и domain packages в M0 не создавать. Утверждённый scope не запускает реализацию до отдельной команды владельца.
 
-Package содержит реальную import-rule configuration, исполняемую проверку/build target и tests. Synthetic graph моделирует будущие имена packages; M1 добавляет production domain packages вместе с их реальными contracts. Это минимальное предложенное прочтение `base apps/packages` из [Project `11 IMPLEMENTATION`, §8 Step 00](../../docs/project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md).
+Package содержит реальную import-rule configuration, исполняемую проверку/build target и tests. Synthetic graph моделирует будущие имена packages; M1 добавляет production domain packages вместе с их реальными contracts. Владелец утвердил это минимальное прочтение `base apps/packages` из [Project `11 IMPLEMENTATION`, §8 Step 00](../../docs/project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md).
 
 В scope: pinned runtime/tooling, lockfile, strict TS, lint/format, содержательные Vitest assertions, dependency-cruiser rules, PR CI, dependency audit и secret scan. Вне scope: application/domain features, clinical schemas/fixtures, database/RLS, analytics/What Changed, mobile/web UI, Health Connect/HealthKit, LLM/Model Gateway, provider calls, deploy и DNS.
 
@@ -47,9 +47,9 @@ Package содержит реальную import-rule configuration, испол�
 и [Project `14 AGENTS`, §4](../../docs/project-spec/v0.4.0/14_AGENTS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md).
 M0 fixture graph содержит только искусственные технические данные, не health records или clinical entities.
 
-## Предложенные точные версии, проверены 15-10-26
+## Точные версии в утверждённом scope, сверены 15-10-26
 
-Версии ниже — **предложенные pins**, не результат install или integration test. В `packageManager`, `devDependencies`, runtime file и CI нужны точные версии без caret ranges.
+Версии ниже входят в утверждённый scope, но их совместимость ещё не подтверждена install или integration test. Перед стартом M0 нужно повторно проверить доступность и совместимость; при несовместимости вернуться к owner review, а не менять pins молча. В `packageManager`, `devDependencies`, runtime file и CI нужны точные версии без caret ranges.
 
 | Инструмент | Pin | Источник и причина |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ M0 fixture graph содержит только искусственные тех
 | dependency-cruiser | `18.6.0` | [npm metadata](https://registry.npmjs.org/dependency-cruiser/18.6.0) и [документация правил/alias](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md); заявлена совместимость с Node 24. |
 | Gitleaks CLI | `8.30.1` | [Официальный release и binary checksums](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1); checksum для CI platform закрепить при workflow implementation. |
 
-Для CI предложены [actions/checkout `v7.0.1`](https://github.com/actions/checkout/releases/tag/v7.0.1), [pnpm/setup `v3.1.1`](https://github.com/pnpm/setup/releases/tag/v3.1.1), точные Node `24.22.0` и pnpm `12.13.0`. При создании workflow закрепить immutable action SHAs и проверить release commits. CI runner и fork-PR behavior — `not_run`.
+Для CI в scope входят [actions/checkout `v7.0.1`](https://github.com/actions/checkout/releases/tag/v7.0.1), [pnpm/setup `v3.1.1`](https://github.com/pnpm/setup/releases/tag/v3.1.1), точные Node `24.22.0` и pnpm `12.13.0`. При создании workflow закрепить immutable action SHAs и проверить release commits. CI runner и fork-PR behavior — `not_run`.
 
 ## Файлы и зависимости
 
@@ -81,7 +81,7 @@ M0 fixture graph содержит только искусственные тех
 
 ## Этапы
 
-1. **M0.0 — owner review:** package graph выбран. До M0.1 согласовать полный executable scope/toolchain/checks и старт implementation, перепроверить `origin/main` SHA и branch protection.
+1. **M0.0 — ожидание старта:** полный scope согласован; M0.1 не начинать до отдельной команды владельца. При старте перепроверить `origin/main` SHA, branch protection и совместимость pins.
 2. **M0.1 — workspace:** pin Node/pnpm/dependencies, создать lockfile и непустой guardrails package. `pnpm install --frozen-lockfile` не должен менять lockfile.
 3. **M0.2 — graph:** реализовать import rules через dependency-cruiser, strict TypeScript, Vitest allowed/forbidden cases и реальный build output. Forbidden edge в negative corpus должен давать ненулевой exit.
 4. **M0.3 — CI:** запустить те же checks на SHA PR; проверить fork PR с read-only permissions, без deploy и product secrets.
@@ -89,7 +89,7 @@ M0 fixture graph содержит только искусственные тех
 
 ## Проверки и критерии принятия
 
-Команды ниже — **предложенный executable contract**, сейчас `not_run`: M0 files/dependencies отсутствуют. Implementation PR должен указать command, cwd, SHA, timestamp, result и evidence pointer для каждого check. `pnpm test` должен выполнять assertions, а не проходить с нулём тестов. Imported source packs исключены из formatter rewrites.
+Команды ниже — **утверждённый executable contract**, сейчас `not_run`: M0 files/dependencies отсутствуют. Implementation PR должен указать command, cwd, SHA, timestamp, result и evidence pointer для каждого check. `pnpm test` должен выполнять assertions, а не проходить с нулём тестов. Imported source packs исключены из formatter rewrites.
 
 | Check | Ожидаемый результат | Статус |
 | --- | --- | --- |
@@ -110,9 +110,10 @@ Acceptance: воспроизводимый install; реальный internal pa
 ## Прогресс
 
 - [x] Onboarding/source reconciliation документированы; наличие packs проверено.
-- [x] Planning base SHA, рекомендованный graph, proposed versions/check names записаны.
+- [x] Planning base SHA, выбранный graph, exact versions/check names записаны.
 - [x] Owner выбрал узкое толкование Step 00: один реальный guardrails package.
-- [ ] Отдельное согласование полного executable scope и старта implementation.
+- [x] Полный executable scope согласован владельцем; старт выбран «позже».
+- [ ] Отдельная команда владельца на старт implementation.
 - [ ] Повторная проверка доступности/совместимости точных версий при старте реализации.
 - [ ] Toolchain, guardrails, tests, build, CI и outcome implementation PR: `not_run`.
 
@@ -121,7 +122,8 @@ Acceptance: воспроизводимый install; реальный internal pa
 | Дата/время (Europe/Moscow) | Решение и альтернативы | Статус / причина |
 | --- | --- | --- |
 | 15-10-26 12-28-44 | **Рекомендован один реальный guardrails package.** Root-only graph меньше, но не доказывает package build; полный target scaffold создаёт пустые shells. | Owner выбрал рекомендацию в текущем Codex chat; implementation требует отдельного решения. |
-| 15-10-26 12-59-48 | Записан выбор owner: «Рекомендованный: один package» в текущем Codex chat. | `approved` для package graph M0; exact pins/checks и executable scope остаются `proposed`. |
+| 15-10-26 12-59-48 | Записан выбор owner: «Рекомендованный: один package» в текущем Codex chat. | `approved` для package graph M0. |
+| 15-10-26 13-13-12 | Записан ответ owner «Утвердить scope, старт позже» на отдельный вопрос о полном M0 scope. | `approved` для scope, pins/checks и non-goals; implementation остаётся `not_started`. |
 | 15-10-26 12-28-44 | Node 24 LTS + pnpm 12 + TS 6.0; TS 7 вне текущего peer range `typescript-eslint`, более старый TS не даёт M0 выгоды. | Exact pins выше предложены; install/CI compatibility — `not_run`. |
 | 15-10-26 12-28-44 | dependency-cruiser вместо custom parser или import-string grep: одна целевая dependency, которая разрешает graph/aliases; grep пропускает relative/alias edges. | Proposal; negative fixtures обязательны. |
 | 15-10-26 12-28-44 | `pnpm audit` + pinned Gitleaks CLI вместо дополнительных action scanners: одинаковые local/CI commands, отдельные gates для registry и binary checksum. | Proposal; scans не запускались. |
@@ -131,8 +133,8 @@ Acceptance: воспроизводимый install; реальный internal pa
 | `pending` из onboarding | Решение для M0 review | Следующий gate |
 | --- | --- | --- |
 | Base SHA и статус source packs | `resolved`: GitHub compare подтвердил `origin/main` = `ab7c2cab7d2f829fe5ae2870b0c26b41fed55a8a`; packs уже в `main`. | Перед implementation branch проверить SHA повторно. |
-| Минимальный package graph | `resolved`: owner выбрал root workspace + один реальный guardrails package + synthetic fixtures. | Перед M0.1 согласовать оставшийся executable scope и implementation start. |
-| Точные версии и checks | `proposed`: pins и команды ниже конкретизированы; совместимость локального install/CI ещё не доказана. | Проверить на свежем checkout после разрешения реализации. |
+| Минимальный package graph | `resolved`: owner выбрал root workspace + один реальный guardrails package + synthetic fixtures. | При старте проверить фактический graph checkout. |
+| Точные версии и checks | `approved_scope`: pins и команды включены в согласованный plan; совместимость local install/CI не доказана. | Повторно сверить версии и проверить на свежем checkout после команды на старт. |
 | ADR-151–170, P2 dates, approved Figma | `deferred`: это не зависимости M0 Foundation; источники остаются с исходным статусом. | Отдельные решения до затрагивающих их M3/M4 работ. |
 | Branch protection, action SHAs и GitHub CI | `not_run`: M0 workflow отсутствует; shell remote check не прошёл из-за DNS. | Проверка при implementation PR; не объявлять их готовыми заранее. |
 
@@ -148,4 +150,4 @@ Acceptance: воспроизводимый install; реальный internal pa
 
 ## Результат
 
-Текущий outcome — reviewable **plan draft** с согласованным package graph, а не выполненный Foundation. После отдельного разрешения на полный executable scope и старт implementation нужно обновить base SHA и доступность точных версий, затем выполнять M0 в отдельной ветке. M1 начинается с database/canonical pipeline; deterministic analytics и `What Changed` остаются M2.
+Текущий outcome — **approved scope**, а не выполненный Foundation. Старт implementation отложен владельцем. После отдельной команды на старт нужно обновить base SHA и проверить доступность точных версий, затем выполнять M0 в отдельной ветке. M1 начинается с database/canonical pipeline; deterministic analytics и `What Changed` остаются M2.

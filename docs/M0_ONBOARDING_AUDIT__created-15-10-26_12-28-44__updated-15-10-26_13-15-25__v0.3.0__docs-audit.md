@@ -1,11 +1,11 @@
 ---
 title: MyPhisys — onboarding audit для review M0 plan
 created: "15-10-26 12-28-44"
-updated: "15-10-26 13-00-59"
+updated: "15-10-26 13-15-25"
 timezone: Europe/Moscow
-version: 0.2.1
-commit: "docs(audit): record approved M0 package graph"
-status: draft
+version: 0.3.0
+commit: "docs(audit): record approved M0 scope and deferred start"
+status: complete
 ---
 
 # M0 onboarding audit
@@ -14,7 +14,7 @@ status: draft
 
 Это read-only audit как доказательная база для отдельного review M0 plan. Он не даёт разрешения на реализацию, установку dependencies, merge или deploy. Ниже сначала перечислены проверенные границы, затем открытые решения и условия перехода к M0.
 
-Отдельный [review draft M0 Foundation](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-00-59__v0.2.1__docs-plan.md) использует этот audit как вход. Импортированные source packs остаются без изменений.
+Отдельный [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-plan.md) использует этот audit как вход. Импортированные source packs остаются без изменений.
 
 ## Checkout и источники
 
@@ -75,16 +75,16 @@ Design D0–D1 может исследовать core flow на synthetic conten
 | --- | --- | --- |
 | `conflicting` | В [Project `13 ADR`, §Status](project-spec/v0.4.0/13_ADR__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md) Accepted указан для v0.3.0, хотя manifest v0.4.0 и ADR-151–170 обозначены Accepted. | Перед реализацией, зависящей от этих ADR, нужен owner addendum или новый source pack; исходный pack сохранить. |
 | `needs_review` | [Project `16 MODEL_STRATEGY`, §§7–8](project-spec/v0.4.0/16_MODEL_STRATEGY__created-10-10-26_11-38-32__updated-10-10-26_04-03-47__v0.4.0.md) называет P2 de-identified, но пример содержит точные даты измерений. | Решить преобразование дат и provider policy до real cloud routing; вне M0. |
-| `stale_handoff` | [M0 template, Context/Sources](../.agent/plans/M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md) ожидает будущий docs PR; текущий `main` уже содержит source packs. | Использовать актуальный base SHA в draft; исторический template сохранить. |
+| `stale_handoff` | [M0 template, Context/Sources](../.agent/plans/M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md) ожидает будущий docs PR; текущий `main` уже содержит source packs. | Использовать актуальный base SHA при старте реализации; исторический template сохранить. |
 | `missing` | В [SOURCE_OF_TRUTH, Current releases](SOURCE_OF_TRUTH.md#current-releases-и-provenance) нет approved Figma file/node. | Визуальная и interaction реализация остаётся без источника; M0 tooling это не блокирует. |
 
 ## Рекомендация и статус
 
-Owner выбрал root workspace, один реальный M0 package `architecture-guardrails` и synthetic test corpus в ответе на отдельный вопрос о package graph в текущем Codex chat; решение записано 15-10-26 12-59-48 (Europe/Moscow). Это согласует узкое прочтение `base apps/packages` из Project `11 IMPLEMENTATION`, Step 00; отдельного разрешения на implementation ответ не содержит. Root-only graph не даёт содержательного package build; полный scaffold создаёт пустые packages, запрещённые текущим [AGENTS, Scope](../AGENTS.md#scope-и-разрешения). M1 domain packages должны появляться вместе с реальными contracts.
+Owner выбрал root workspace, один реальный M0 package `architecture-guardrails` и synthetic test corpus в ответе на отдельный вопрос о package graph в текущем Codex chat; решение записано 15-10-26 12-59-48 (Europe/Moscow). Затем owner утвердил полный M0 scope с выбранным graph, pins/checks и non-goals, указав «старт позже»; запись внесена 15-10-26 13-13-12. Root-only graph не даёт содержательного package build; полный scaffold создаёт пустые packages, запрещённые текущим [AGENTS, Scope](../AGENTS.md#scope-и-разрешения). M1 domain packages должны появляться вместе с реальными contracts.
 
-Подробный scope и альтернативы — в [review draft, «Журнал решений»](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-00-59__v0.2.1__docs-plan.md#журнал-решений).
+Подробный scope и альтернативы — в [M0 plan, «Журнал решений»](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-15-25__v0.3.0__docs-plan.md#журнал-решений).
 
 - Сверка onboarding и источников: `go` для планирования.
-- Package graph: `approved` владельцем для scope M0 plan; exact pins/checks остаются предложением.
-- M0 implementation: `blocked` отсутствием отдельного разрешения на executable plan и implementation.
+- M0 scope: `approved` владельцем для package graph, pins/checks и non-goals; runtime compatibility ещё `not_run`.
+- M0 implementation: `not_started` по выбору владельца «старт позже»; требуется отдельная команда на старт.
 - Install/build/tests/CI и runtime outcomes: `not_run`.
