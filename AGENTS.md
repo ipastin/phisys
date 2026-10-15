@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Codex instructions
 created: "15-10-26 09-37-26"
-updated: "15-10-26 13-34-06"
+updated: "15-10-26 13-52-35"
 timezone: Europe/Moscow
-version: 0.2.7
-commit: "docs(codex): link reviewed M0 plan"
+version: 0.2.8
+commit: "docs(codex): synchronize root guidance version"
 ---
 
 # MyPhisys

@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — ExecPlan contract
 created: "15-10-26 09-37-26"
-updated: "15-10-26 13-34-06"
+updated: "15-10-26 13-52-35"
 timezone: Europe/Moscow
-version: 0.2.7
-commit: "docs(plans): link reviewed M0 plan"
+version: 0.2.8
+commit: "docs(plans): synchronize review artifact versions"
 ---
 
 # ExecPlans
@@ -65,8 +65,8 @@ safety/privacy change и milestone. Для небольшой локальной
 
 ## Файлы и версии
 
-Версия root guidance (`AGENTS`, `SOURCE_OF_TRUTH`, этот contract) — `0.2.6`; onboarding
-и M0 template остаются `0.2.0`, а onboarding audit и M0 plan — `0.3.0`.
+Версия root guidance (`AGENTS`, `SOURCE_OF_TRUTH`, этот contract) — `0.2.8`; onboarding
+и M0 template остаются `0.2.0`, а onboarding audit и M0 plan — `0.3.1`.
 Template и approved plan имеют разные статусы; plan не является вторым «current» template. Версии независимы от
 Project Spec `0.4.0` и Product Design Spec `0.2.0`.
 В теле каждого нового Markdown-документа указывай `created`, `updated`, `timezone`, `version`, `commit`.

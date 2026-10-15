@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Source of Truth
 created: "15-10-26 09-37-26"
-updated: "15-10-26 13-34-06"
+updated: "15-10-26 13-52-35"
 timezone: Europe/Moscow
-version: 0.2.7
-commit: "docs(sources): link reviewed M0 plan"
+version: 0.2.8
+commit: "docs(sources): synchronize review artifact versions"
 status: proposed
 ---
 
@@ -21,7 +21,7 @@ repository — [ipastin/phisys](https://github.com/ipastin/phisys); выбран
 | --- | --- | --- |
 | Project Specification Pack `0.4.0` | [Project README](project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md), [manifest](project-spec/v0.4.0/manifest.json) | Предоставлен владельцем; 18 Markdown-документов. Current product/architecture/engineering source. |
 | Product Design Specification Pack `0.2.0` | [Design README](product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md), [manifest](product-design/v0.2.0/manifest.json) | Предоставлен владельцем; 28 Markdown-документов. Current design specification. |
-| Root guidance `0.2.6`; onboarding/M0 template `0.2.0`; M0 audit/plan `0.3.0` | Ссылки ниже | Compact instructions и review artifacts; подчиняются оригинальным sources. |
+| Root guidance `0.2.8`; onboarding/M0 template `0.2.0`; M0 audit/plan `0.3.1` | Ссылки ниже | Compact instructions и review artifacts; подчиняются оригинальным sources. |
 | Figma | Approved file/node URLs ещё не указаны | `missing` для visual/interaction implementation; не выдумывай design authority. |
 | История чатов / старые packs | В Git как current release не импортированы | Только context/history, не замена оригиналов. |
 
