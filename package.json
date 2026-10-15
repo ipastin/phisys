@@ -10,12 +10,13 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "lint": "eslint packages/architecture-guardrails/src packages/architecture-guardrails/test tests/architecture",
-    "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig.json tsconfig.tests.json eslint.config.mjs .prettierrc.json .github/workflows/ci.yml packages/architecture-guardrails/package.json packages/architecture-guardrails/tsconfig.json packages/architecture-guardrails/src packages/architecture-guardrails/test tests/architecture",
+    "lint": "eslint packages/*/src packages/*/test tests/architecture",
+    "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig.json tsconfig.tests.json eslint.config.mjs .prettierrc.json .github/workflows/ci.yml packages/*/package.json packages/*/tsconfig.json packages/*/src packages/*/test tests/architecture",
     "typecheck": "turbo run typecheck && tsc -p tsconfig.tests.json",
     "test:unit": "turbo run test:unit",
     "test:architecture": "pnpm build && vitest run tests/architecture",
-    "test": "pnpm test:unit && pnpm test:architecture"
+    "test": "pnpm test:unit && pnpm test:architecture",
+    "test:db": "vitest run packages/database/test/integration.test.ts && vitest run packages/ingestion/test/integration.test.ts && vitest run packages/connectors/test/integration.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
