@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — Source of Truth
 created: "15-10-26 09-37-26"
-updated: "15-10-26 14-16-46"
+updated: "15-10-26 17-32-04"
 timezone: Europe/Moscow
-version: 0.2.9
-commit: "docs(sources): link updated M0 review artifacts"
+version: 0.2.16
+commit: "docs(sources): link accepted M0 exceptions"
 status: proposed
 ---
 
@@ -21,7 +21,7 @@ repository — [ipastin/phisys](https://github.com/ipastin/phisys); выбран
 | --- | --- | --- |
 | Project Specification Pack `0.4.0` | [Project README](project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md), [manifest](project-spec/v0.4.0/manifest.json) | Предоставлен владельцем; 18 Markdown-документов. Current product/architecture/engineering source. |
 | Product Design Specification Pack `0.2.0` | [Design README](product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md), [manifest](product-design/v0.2.0/manifest.json) | Предоставлен владельцем; 28 Markdown-документов. Current design specification. |
-| Root guidance `0.2.9`; onboarding/M0 template `0.2.0`; M0 audit/plan `0.3.2` | Ссылки ниже | Compact instructions и review artifacts; подчиняются оригинальным sources. |
+| Root AGENTS/PLANS `0.2.9`, source index `0.2.16`; onboarding/M0 template `0.2.0`; M0 audit/approved plan `0.3.2` | Ссылки ниже | Compact instructions и review artifacts; подчиняются оригинальным sources. |
 | Figma | Approved file/node URLs ещё не указаны | `missing` для visual/interaction implementation; не выдумывай design authority. |
 | История чатов / старые packs | В Git как current release не импортированы | Только context/history, не замена оригиналов. |
 
@@ -129,4 +129,5 @@ M5 Hardening: provenance/audit/security/evals/export/delete → Personal Beta ga
 - [Onboarding prompt](../prompts/CODEX_ONBOARDING__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-prompt.md) — read-only первый chat.
 - [M0 Foundation template](../.agent/plans/M0-foundation__created-15-10-26_09-37-26__updated-15-10-26_11-09-37__v0.2.0__docs-plan.md) — template для review, не реализованный milestone.
 - [M0 onboarding audit](M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-audit.md) — checkout/source evidence и открытые решения.
-- [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) — утверждённый scope/toolchain/checks; старт implementation отложен владельцем.
+- [M0 Foundation plan](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) — утверждённый scope/toolchain/checks; на момент approval старт был отложен.
+- [M0 implementation evidence](../.agent/plans/M0-foundation-implementation__created-15-10-26_15-09-12__updated-15-10-26_17-32-04__v0.2.4__docs-plan.md) — выполнение после отдельной команды владельца; локальные checks, PR CI и принятые владельцем исключения.

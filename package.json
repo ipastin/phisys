@@ -1,0 +1,31 @@
+{
+  "name": "myphisys",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@12.13.0",
+  "engines": {
+    "node": "24.22.0",
+    "pnpm": "12.13.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "eslint packages/architecture-guardrails/src packages/architecture-guardrails/test tests/architecture",
+    "format:check": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig.json tsconfig.tests.json eslint.config.mjs .prettierrc.json .github/workflows/ci.yml packages/architecture-guardrails/package.json packages/architecture-guardrails/tsconfig.json packages/architecture-guardrails/src packages/architecture-guardrails/test tests/architecture",
+    "typecheck": "turbo run typecheck && tsc -p tsconfig.tests.json",
+    "test:unit": "turbo run test:unit",
+    "test:architecture": "pnpm build && vitest run tests/architecture",
+    "test": "pnpm test:unit && pnpm test:architecture"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.12.0",
+    "prettier": "3.9.10",
+    "turbo": "2.11.8",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  }
+}

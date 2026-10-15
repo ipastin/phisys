@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "packages/architecture-guardrails/test/**/*.ts",
+    "tests/architecture/*.test.ts"
+  ]
+}
