@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — onboarding audit для review M0 plan
 created: "15-10-26 12-28-44"
-updated: "15-10-26 12-53-50"
+updated: "15-10-26 13-00-59"
 timezone: Europe/Moscow
-version: 0.2.0
-commit: "docs(audit): clarify M0 boundaries and gates"
+version: 0.2.1
+commit: "docs(audit): record approved M0 package graph"
 status: draft
 ---
 
@@ -14,7 +14,7 @@ status: draft
 
 Это read-only audit как доказательная база для отдельного review M0 plan. Он не даёт разрешения на реализацию, установку dependencies, merge или deploy. Ниже сначала перечислены проверенные границы, затем открытые решения и условия перехода к M0.
 
-Отдельный [review draft M0 Foundation](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_12-53-50__v0.2.0__docs-plan.md) использует этот audit как вход. Импортированные source packs остаются без изменений.
+Отдельный [review draft M0 Foundation](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-00-59__v0.2.1__docs-plan.md) использует этот audit как вход. Импортированные source packs остаются без изменений.
 
 ## Checkout и источники
 
@@ -80,11 +80,11 @@ Design D0–D1 может исследовать core flow на synthetic conten
 
 ## Рекомендация и статус
 
-Предлагаю root workspace, один реальный M0 package `architecture-guardrails` и synthetic test corpus. Это узкое прочтение `base apps/packages` из Project `11 IMPLEMENTATION`, Step 00, поэтому оно требует owner review. Root-only graph не даёт содержательного package build; полный scaffold создаёт пустые packages, запрещённые текущим [AGENTS, Scope](../AGENTS.md#scope-и-разрешения). M1 domain packages должны появляться вместе с реальными contracts.
+Owner выбрал root workspace, один реальный M0 package `architecture-guardrails` и synthetic test corpus в ответе на отдельный вопрос о package graph в текущем Codex chat; решение записано 15-10-26 12-59-48 (Europe/Moscow). Это согласует узкое прочтение `base apps/packages` из Project `11 IMPLEMENTATION`, Step 00; отдельного разрешения на implementation ответ не содержит. Root-only graph не даёт содержательного package build; полный scaffold создаёт пустые packages, запрещённые текущим [AGENTS, Scope](../AGENTS.md#scope-и-разрешения). M1 domain packages должны появляться вместе с реальными contracts.
 
-Подробный scope и альтернативы — в [review draft, «Журнал решений»](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_12-53-50__v0.2.0__docs-plan.md#журнал-решений).
+Подробный scope и альтернативы — в [review draft, «Журнал решений»](../.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_13-00-59__v0.2.1__docs-plan.md#журнал-решений).
 
 - Сверка onboarding и источников: `go` для планирования.
-- M0 plan: `needs_review` для package graph и owner approval.
-- M0 implementation: `blocked` текущим разрешением только на документацию и отсутствием утверждённого executable plan.
+- Package graph: `approved` владельцем для scope M0 plan; exact pins/checks остаются предложением.
+- M0 implementation: `blocked` отсутствием отдельного разрешения на executable plan и implementation.
 - Install/build/tests/CI и runtime outcomes: `not_run`.
