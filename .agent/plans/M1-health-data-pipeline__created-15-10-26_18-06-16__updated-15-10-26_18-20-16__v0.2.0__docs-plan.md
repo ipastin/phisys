@@ -1,11 +1,11 @@
 ---
 title: MyPhisys — M1 Health Data Pipeline ExecPlan
 created: "15-10-26 18-06-16"
-updated: "15-10-26 18-11-07"
+updated: "15-10-26 18-20-16"
 timezone: Europe/Moscow
-version: 0.1.1
-commit: "docs(plan): remove local path from M1 plan"
-status: draft
+version: 0.2.0
+commit: "docs(plan): record approved M1 decisions"
+status: approved
 ---
 
 # M1 Health Data Pipeline
@@ -16,7 +16,7 @@ status: draft
 
 ## Status / Authorization
 
-`draft`, owner: Igor Pastin. Запрос 15-10-26 разрешает **планирование** M1 и reviewable документ; implementation, merge и deploy не разрешены. Решения D1–D3 ниже имеют `needs_review`: они не становятся approval от публикации этого плана или PR. После решения владельца обновить этот файл и, если решение меняет accepted semantics, оформить отдельный ADR/addendum до implementation. PR с планом — средство review, не разрешение выполнять шаги M1. Merge PR требует отдельного действия владельца.
+`approved` для scope и вариантов D1–D3, owner: Igor Pastin. В сообщении 15-10-26 «По D1-D3 рекомендуемые тобой варианты» владелец выбрал вариант A для каждого решения. Это утверждает описанные ниже границы, но не запускает implementation: исходный запрет начинать implementation, merge и deploy остаётся в силе. Точные schema/contract assertions подготовить при следующем старте M1; если они меняют accepted semantics, сначала показать решение и оформить ADR/addendum. PR с планом — средство review; его merge требует отдельного действия владельца.
 
 ## Context / Sources
 
@@ -32,7 +32,7 @@ status: draft
 1. PostgreSQL foundation: только таблицы и schema, реально нужные M1 vertical slice, с migration, person isolation/RLS, UUIDv7 и transactional outbox для затронутых mutations. Supabase/Drizzle указаны в target stack; production cloud provisioning и secrets вне этого плана.
 2. FHIR/vendor-independent canonical core для Observation, Symptom, Source, Provenance, HealthEvent, Concept, Quantity и TemporalValue. Persisted fact имеет person binding, concept, value/status, source, epistemic и verification status. Для numeric facts исходные value/unit обязательны; canonical value/unit заполняются только при валидной context-aware normalization.
 3. Детерминированный, versioned synthetic dataset: 90 дней sleep/HR, steps, weight, sparse labs, symptoms, missing week, source transition, outlier и конфликт. Только вымышленные данные. Это M1 subset golden profile из EVALS §3; medication/document ambiguity остаются позднейшим расширением fixture, поскольку соответствующие connectors и semantics не входят в Steps 03–07.
-4. Ingestion: insert/update/duplicate/delete/quarantine, identity/dedupe, повторная доставка и mapping через validation boundary. Manual connector подаёт weight, BP, generic observation и symptom в тот же Raw/Source pipeline. M1 demonstrable entry point — domain/connector contract и tests; решение о runtime API/UX вынесено в D3.
+4. Ingestion: insert/update/duplicate/delete/quarantine, identity/dedupe, повторная доставка и mapping через validation boundary. Manual connector подаёт weight, BP, generic observation и symptom в тот же Raw/Source pipeline. По D3 M1 demonstrable entry point — domain/connector contract и tests; runtime API/UX остаётся вне M1.
 
 **За пределами M1:** M2 registry/quality/baseline/trend/state diff/`What Changed`, M3 mobile/Today/Health Connect, M4 PDF/Records/Model Gateway/AI, full document or medication ingestion, cloud deploy, реальные health records, Figma/shared-system writes. M1 не строит пустые future packages, UI и generic connector platform. M5 hardening не отменяет обязательные уже в M1 provenance, RLS и tests.
 
@@ -50,7 +50,7 @@ manual/synthetic connector → immutable Raw + SourceRecord
 - Raw immutable. Update = новая version/supersession; delete = tombstone source representation и пересмотр supporting sources, без уничтожения истории. Connector delivery at-least-once, а эффект ingestion idempotent (`ADR-004`, 010, 078; Connectors §§7–8). Duplicate одного события и conflicting claims — разные состояния; unresolved conflict нельзя silently source-resolve (`ADR-011`).
 - Canonical persistent fact без provenance запрещён (`INV-004`). `effective`, `recorded`, `ingested` и точность даты сохраняются отдельно; unknown/missing не превращаются в `0`, `false`, `normal` или выдуманный день/час (`INV-007`). Epistemic state и verification status — разные оси; `inferred` не становится clinical fact (`INV-006`).
 - Backend domain layer — primary access boundary, RLS — defense in depth; тестировать изоляцию между двумя synthetic persons (`ADR-131`). Реальные credentials, personal data и raw health payload не выводить в logs/fixtures. Outbox обязателен для затронутых DB mutations (`ADR-137`); retry jobs idempotent (`ADR-138`).
-- INV-014 относится к natural-language write через product agent; для connector ingestion нет blanket requirement подтверждать каждый факт. Случаи без надёжной identity/provenance/meaning должны идти в quarantine или `Needs Review`, а не в verified canonical record. Правило auto-promotion требует D2.
+- INV-014 относится к natural-language write через product agent; для connector ingestion нет blanket requirement подтверждать каждый факт. По утверждённому D2 случаи без надёжной identity/provenance/meaning идут в quarantine или `Needs Review`, а не в verified canonical record.
 
 ## Files / Dependencies / Consumers
 
@@ -58,7 +58,7 @@ manual/synthetic connector → immutable Raw + SourceRecord
 
 | Planned locus | Consumer / required checks |
 | --- | --- |
-| `packages/database/**` + migrations | PostgreSQL schemas `identity`, `source`, `health`, минимальные `jobs`/outbox и необходимые RLS policies; migration/rollback и person-isolation tests. Конкретные таблицы после D1. |
+| `packages/database/**` + migrations | По D1 только M1 tables в PostgreSQL schemas `identity`, `source`, `health`, минимальные `jobs`/outbox и необходимые RLS policies; migration/rollback и person-isolation tests. Точные relationships определить перед Step 03. |
 | `packages/health-core/**` | Pure canonical types/invariants; ingestion imports these contracts, core не импортирует database, connector или SDK. Unit tests для quantity, time, epistemic/provenance. |
 | `packages/ingestion/**` | SourceRecord validation, mapping, idempotent versioning/quarantine; integration tests на DB boundary и negative cases. |
 | `packages/connectors/**` | Manual adapter только Raw/Source; contract tests incl. update/delete/retry/revocation semantics применительно к manual source. |
@@ -73,7 +73,7 @@ CWD для всех шагов: repository root. DAG: `M1.0 → M1.1 → M1.2 �
 
 | ID | Work after authorization | Observable handoff |
 | --- | --- | --- |
-| M1.0 | Утвердить D1–D3, записать решения и при необходимости ADR/addendum; обновить ветку от свежего `main`, проверить scoped instructions, diff, Node/pnpm, существующие callers/config. | `approved` scope и точные schema/contract assertions до кода. |
+| M1.0 | Утверждённые D1–D3 зафиксированы; после отдельного старта implementation обновить ветку от свежего `main`, проверить scoped instructions, diff, Node/pnpm, callers/config и уточнить schema/contract assertions. При изменении accepted semantics сначала ADR/addendum. | Точные schema/contract assertions до кода без повторного согласования уже принятых D1–D3. |
 | M1.1 / Step 03 | Разработать M1 physical schema и миграции с RLS, UUIDv7, provenance links и outbox. Запуск только на throwaway local PostgreSQL, без production cloud. | Migration up/down/reapply, cross-person deny и atomic mutation/outbox evidence. |
 | M1.2 / Step 04 | Реализовать pure canonical core и явные validation errors; сопоставить persisted schema с contract. | Unit/domain tests для supported values, unknown, temporal precision, original/canonical units, provenance и conflict state. |
 | M1.3 / Step 05 | Добавить deterministic synthetic M1 profile и expected records/relationships. | Повторный seed даёт одинаковые IDs/content; отсутствуют реальные данные; golden inputs закрывают перечисленные M1 edge cases. |
@@ -101,17 +101,17 @@ Plan artifact check before review: Markdown metadata/name, relative links, `git 
 
 - [x] 15-10-26 18-06-16 Europe/Moscow — PR #3 merge и `main` SHA сопоставлены; чистый checkout и M0 package map просмотрены.
 - [x] 15-10-26 18-06-16 — прочитаны current source index, root instructions, M1 sections Project Spec и M0 handoff; составлен draft ExecPlan.
-- [ ] D1–D3 reviewed владельцем; plan/status обновлён.
+- [x] 15-10-26 18-20-16 — владелец выбрал рекомендованный вариант A для D1–D3; plan/status обновлён до `approved`.
 - [ ] M1 implementation authorized отдельной задачей.
 - [ ] Steps 03–07 и acceptance evidence выполнены.
 
-## Decision log — owner review required
+## Decision log — approved scope choices
 
 | ID | Options and trade-off | Recommendation / gate |
 | --- | --- | --- |
-| D1 — physical schema и canonical slice | **A:** M1-only tables для Person/Source/Raw/Provenance/Concept/Observation/Symptom/HealthEvent/Conflict плюс нужные RLS/outbox: меньше миграций без consumers, но M2/M4 добавят свои таблицы. **B:** сразу весь перечень DATA_MODEL §21, включая documents/derived/baselines: меньше поздних migrations, но неиспользуемая clinical schema повышает риск неверных semantics. | **A**; утвердить точный минимальный набор/relationships и правила versioning до Step 03. Это canonical model decision, не просто SQL detail. |
-| D2 — auto-promotion после validation | **A:** deterministic allowlist поддерживаемых concept/unit/time и однозначной person/source identity; unsupported → quarantine, conflicting claims → `Needs Review`: безопаснее, но больше review backlog. **B:** широкий auto-map и fuzzy dedupe: выше coverage, но ложный verified fact и silent merge опаснее. | **A**; согласовать, какие M1 inputs становятся canonical без user confirmation, и минимальные typed reasons quarantine/review до Step 06. Thresholds должны иметь eval evidence, не объявляться clinical truth. |
-| D3 — manual connector handoff | **A:** рабочий adapter + domain entry point + tests, UI/API delivery в M3: малый M1 slice, но ручной ввод пока не доступен пользователю. **B:** добавить Fastify endpoint в M1: end-to-end runtime proof, но раньше срока открывает auth/permission и API surface. | **A** для M1; если нужен user-facing ввод сразу, отдельно утвердить B вместе с auth/privacy scope и критериями. Ни один вариант не допускает прямую запись UI/Agent в canonical. |
+| D1 — physical schema и canonical slice | **A:** M1-only tables для Person/Source/Raw/Provenance/Concept/Observation/Symptom/HealthEvent/Conflict плюс нужные RLS/outbox: меньше миграций без consumers, но M2/M4 добавят свои таблицы. **B:** сразу весь перечень DATA_MODEL §21, включая documents/derived/baselines: меньше поздних migrations, но неиспользуемая clinical schema повышает риск неверных semantics. | **A approved владельцем 15-10-26.** Точные relationships и versioning assertions подготовить до Step 03; изменение accepted clinical semantics потребует отдельного review. |
+| D2 — auto-promotion после validation | **A:** deterministic allowlist поддерживаемых concept/unit/time и однозначной person/source identity; unsupported → quarantine, conflicting claims → `Needs Review`: безопаснее, но больше review backlog. **B:** широкий auto-map и fuzzy dedupe: выше coverage, но ложный verified fact и silent merge опаснее. | **A approved владельцем 15-10-26.** Для Step 06 определить supported inputs и typed reasons quarantine/review; thresholds подтверждать eval evidence, а не объявлять clinical truth. |
+| D3 — manual connector handoff | **A:** рабочий adapter + domain entry point + tests, UI/API delivery в M3: малый M1 slice, но ручной ввод пока не доступен пользователю. **B:** добавить Fastify endpoint в M1: end-to-end runtime proof, но раньше срока открывает auth/permission и API surface. | **A approved владельцем 15-10-26.** UI/API вне M1; ни один input не пишет canonical напрямую. |
 
 Accepted source choices не выносятся на повторное голосование: PostgreSQL, Raw immutability, provenance, connector isolation, idempotent ingestion, backend domain access + RLS. Детали identity binding для production auth и DB credentials уточняются при M1.0; никаких secret/cloud actions этим планом не разрешено.
 
@@ -130,4 +130,4 @@ Accepted source choices не выносятся на повторное голо
 
 ## Outcomes / Retrospective
 
-Сейчас готов только reviewable **draft plan**. Artifact/source checks будут записаны в PR; behavior checks M1 — `not_run`. Следующий шаг: review D1–D3 и точного M1 scope, затем обновить план/ADR и получить отдельный старт implementation. Ни одна строка этого документа не подтверждает выполненную миграцию, ingestion или production readiness.
+Scope и варианты D1–D3 утверждены владельцем; implementation ещё не начат. Artifact/source checks записываются в PR; behavior checks M1 — `not_run`. Следующий шаг после отдельного старта implementation: M1.0 с точными schema/contract assertions, затем Steps 03–07. Ни одна строка этого документа не подтверждает выполненную миграцию, ingestion или production readiness.
