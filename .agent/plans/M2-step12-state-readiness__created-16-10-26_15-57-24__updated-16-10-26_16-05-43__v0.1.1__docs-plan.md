@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 12 State Snapshot/Diff readiness
 created: "16-10-26 15-57-24"
-updated: "16-10-26 15-59-50"
+updated: "16-10-26 16-05-43"
 timezone: Europe/Moscow
-version: 0.1.0
-commit: "docs(plan): draft M2 Step 12 state readiness"
+version: 0.1.1
+commit: "docs(plan): align State Snapshot ownership with architecture"
 status: draft
 ---
 
@@ -30,7 +30,7 @@ The actual source of behavior is [M1 schema](../../packages/database/migrations/
 
 This PR changes this ExecPlan only. It defines the first-slice decision, semantic contracts, dependencies, negative cases, and acceptance evidence. It does not add a snapshot table, change permissions, create a `clinical-state` package, expose a product API, or assert that existing sleep period comparison is a State Diff. No LLM, clinical interpretation, risk score, UI, or real health data is involved.
 
-Step 12 as specified is broader than any narrow initial slice: `conditions`, `medications`, `allergies`, `goals`, `metric states`, `recent events`, `conflicts`, `data quality`; its diff includes structural added/removed/changed state, new events, medication and metric changes, and conflicts. A sleep-only slice must be labelled **partial Step 12**, with A15/A16 full-contract coverage still `needs_review`.
+Step 12 as specified is broader than any narrow initial slice: `conditions`, `medications`, `allergies`, `goals`, `metric states`, `recent events`, `conflicts`, `data quality`; its diff includes structural added/removed/changed state, new events, medication and metric changes, and conflicts. The target architecture assigns point-in-time Health State Snapshot/current projection to `clinical-state` and Quality/diff to `analytics`; a sleep-only metric-state input must be labelled **partial Step 12**, with A15/A16 full-contract coverage still `needs_review`.
 
 ## 5. Invariants / Architecture impact
 
@@ -68,7 +68,7 @@ All options preserve the common contract above. They vary in scope and what can 
 
 ## 7. Files and dependencies
 
-No implementation file changes in this PR. For A after approval: [analytics implementation](../../packages/analytics/src/index.ts) and [golden tests](../../packages/analytics/test/quality.test.ts) own pure snapshot/diff composition; [DB tests](../../packages/analytics/test/integration.test.ts) verify person isolation, source lifecycle and stable repeated reads. Reuse [sleep reader](../../packages/database/src/analytics.ts) and existing package exports/scripts, synthetic fixtures, CI. Search new and existing callers/exports again at implementation time. No new dependency or migration is expected for A.
+No implementation file changes in this PR. For A after approval: [analytics implementation](../../packages/analytics/src/index.ts) and [golden tests](../../packages/analytics/test/quality.test.ts) can compose only the partial sleep metric-state input/diff; [DB tests](../../packages/analytics/test/integration.test.ts) verify person isolation, source lifecycle and stable repeated reads. Reuse [sleep reader](../../packages/database/src/analytics.ts) and existing package exports/scripts, synthetic fixtures, CI. The full Health State Snapshot/current projection belongs to `clinical-state` when that module has an actual domain model; do not create an empty package for A. Search new and existing callers/exports again at implementation time. No new dependency or migration is expected for A.
 
 B depends on a scoped change to [analytics DB role](../../packages/database/migrations/0002_up.sql) with matching down migration, a new minimum-column person-scoped reader, tests for grants/RLS, stable event identity, and an explicit snapshot capture/compare boundary. `event_key` is present physically but not exposed to analytics today. C further depends on canonical domain tables/models, transition history or immutable snapshot ledger, backfill/migration/recovery strategy, and privacy/security review. No existing caller outside analytics tests imports the current sleep functions; changing their result shape would still require checking all callers/tests/exports.
 
@@ -101,7 +101,7 @@ For this docs-only PR, verify all 13 ExecPlan sections, metadata/relative links,
 
 ## 10. Decision log
 
-16-10-26: A/B/C compared above; **A is recommended, not approved**. Reason: A can use the verified current sleep reader and Quality/provenance without new Canonical schema or unsupported historical claims. B advances structural semantics but needs identity and role changes. C addresses full historical state but needs additional domain models and an immutable transition strategy. Owner decisions requested: (1) A, B or C first; (2) whether the product requires historical `knowledge_as_of` in the first delivered slice; (3) for B/C, stable event identity and explicit removal evidence policy. The full source-pack/ADR status question remains separate.
+16-10-26: A/B/C compared above; **A is recommended, not approved**. Reason: A can use the verified current sleep reader and Quality/provenance without new Canonical schema or unsupported historical claims. B advances structural semantics but needs identity and role changes. C addresses full historical state but needs additional domain models and an immutable transition strategy. The architecture reserves full state projection for `clinical-state`; A does not redefine that boundary. Owner decisions requested: (1) A, B or C first; (2) whether the product requires historical `knowledge_as_of` in the first delivered slice; (3) for B/C, stable event identity and explicit removal evidence policy. The full source-pack/ADR status question remains separate.
 
 ## 11. Surprises / Open questions
 
