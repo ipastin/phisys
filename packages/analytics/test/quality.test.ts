@@ -123,6 +123,24 @@ test('per-fact Raw supports distinguish swapped lineage while aggregates stay st
   expect(missing.excludedFactIds).toContain(facts[0]!.id);
 });
 
+test('mutating a Quality result cannot change its inputs or a repeated calculation', () => {
+  const facts = sleepFacts().slice(0, 1);
+  const inputWindow = { ...window };
+  const originalFacts = structuredClone(facts);
+  const originalWindow = { ...inputWindow };
+  const result = evaluateSleepQuality(facts, inputWindow);
+
+  result.provenance.supports[0]!.sourceId = 'changed-in-result';
+  result.provenance.factSupports[0]!.supports[0]!.rawId = 'changed-in-result';
+  result.window.startDate = '2026-01-02';
+
+  expect(facts).toEqual(originalFacts);
+  expect(inputWindow).toEqual(originalWindow);
+  expect(evaluateSleepQuality(facts, inputWindow)).toEqual(
+    evaluateSleepQuality(originalFacts, originalWindow),
+  );
+});
+
 test('versioned policy and returned parameters cannot change a later result', () => {
   const facts = sleepFacts();
   const result = evaluateSleepQuality(facts, window);
