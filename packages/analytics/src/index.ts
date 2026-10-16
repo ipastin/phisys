@@ -181,7 +181,7 @@ export function evaluateSleepQuality(
     for (const support of fact.supports) {
       rawRecordIds.add(support.rawId);
       sourceIds.add(support.sourceId);
-      supports.set(support.rawId, support);
+      supports.set(support.rawId, { ...support });
     }
     const valid =
       validDate &&
@@ -277,7 +277,7 @@ export function evaluateSleepQuality(
     metricDefinitionVersion: sleepDuration.version,
     algorithmVersion: 'sleep-quality-v1',
     parameters: Object.freeze({ ...sleepDuration.qualityPolicy }),
-    window,
+    window: { ...window },
     status,
     reasons,
     coverage: { observedDays, expectedDays, ratio },
