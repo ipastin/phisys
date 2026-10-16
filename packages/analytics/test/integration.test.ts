@@ -216,26 +216,36 @@ test('DB correction, support swap and tombstones recompute period provenance and
   expect(afterSwap.quality.combined.provenance.rawRecordIds).not.toEqual(
     before.quality.combined.provenance.rawRecordIds,
   );
-  const current = goldenRecords(personD).find(
-    (item) =>
+  for (const current of goldenRecords(personD).filter((item) => {
+    const date = (item.payload.effective as { value: string }).value;
+    return (
       item.payload.conceptId === 'sleep_duration' &&
-      (item.payload.effective as { value: string }).value === '2026-01-10',
-  )!;
-  expect(
-    (
-      await ingest(writer, {
-        ...current,
-        eventKey: 'step11:2026-01-10',
-        version: 2,
-        payload: {
-          ...current.payload,
-          value: { kind: 'quantity', originalValue: 9, originalUnit: 'h' },
-        },
-      })
-    ).state,
-  ).toBe('imported');
+      date >= '2026-01-08' &&
+      date <= '2026-01-11'
+    );
+  })) {
+    const date = (current.payload.effective as { value: string }).value;
+    expect(
+      (
+        await ingest(writer, {
+          ...current,
+          eventKey: `step11:${date}`,
+          version: 2,
+          payload: {
+            ...current.payload,
+            value: { kind: 'quantity', originalValue: 9, originalUnit: 'h' },
+          },
+        })
+      ).state,
+    ).toBe('imported');
+  }
   const corrected = await sleepPeriodComparison(reader, personD, period);
-  expect(corrected.comparison).not.toBeNull();
+  expect(corrected.comparison).toMatchObject({
+    previousMedianHours: 8,
+    currentMedianHours: 9,
+    absoluteDeltaHours: 1,
+    direction: 'increasing',
+  });
   expect(corrected.quality.combined.provenance.rawRecordIds).not.toEqual(
     afterSwap.quality.combined.provenance.rawRecordIds,
   );

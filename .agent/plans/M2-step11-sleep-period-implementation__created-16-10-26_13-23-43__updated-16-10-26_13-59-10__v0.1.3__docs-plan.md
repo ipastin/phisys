@@ -1,9 +1,9 @@
 ---
 title: MyPhisys — M2 Step 11 synthetic sleep period implementation
 created: "16-10-26 13-23-43"
-updated: "16-10-26 13-35-43"
+updated: "16-10-26 13-59-10"
 timezone: Europe/Moscow
-version: 0.1.2
+version: 0.1.3
 commit: "feat(analytics): compare adjacent synthetic sleep weeks"
 status: in_progress
 ---
@@ -43,15 +43,15 @@ Use existing Quality for previous, current and combined periods. Block incomplet
 
 ## 8. Validation / Acceptance
 
-Golden cases cover complete stable/shifted/zero-reference windows, missing day/week/sparse, invalid/excluded/conflict/overlap/Raw support, source transition, out-of-window facts, order independence, unverified/stale qualified results, leap day and DST local dates. DB cases cover comparison, person isolation, duplicate retry, correction, support swap, tombstones, missing week and connector boundary. Existing DB privilege regression checks forbidden Raw payload and Raw/Canonical writes.
+Golden cases cover complete stable/shifted/zero-reference windows, a valid isolated outlier, missing day/week/sparse, invalid/excluded/conflict/overlap/Raw support, source transitions at the boundary and within a week, out-of-window facts, order independence, unverified/stale qualified results, leap day and DST local dates. DB cases cover comparison, person isolation, duplicate retry, correction that changes the current median, support swap, tombstones, missing week and connector boundary. Existing DB privilege regression checks forbidden Raw payload and Raw/Canonical writes.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
 | `pnpm typecheck` | pass | 16-10-26, all 9 tasks |
 | `pnpm lint` | pass | 16-10-26 |
 | `pnpm format:check` | pass | 16-10-26 |
-| `pnpm test` | pass | 16-10-26, analytics unit 23; architecture 19 |
-| `DATABASE_URL=<disposable PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` | pass | 16-10-26, database 3, ingestion 13, connectors 2, analytics 9; fresh DB after adding correction/support/tombstone regression |
+| `pnpm test` | pass | 16-10-26 review, analytics unit 24; architecture 19 |
+| `DATABASE_URL=<disposable PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` | pass | 16-10-26 review, database 3, ingestion 13, connectors 2, analytics 9; fresh DB with correction-to-median assertion |
 | `pnpm install --frozen-lockfile --store-dir <local store> --package-import-method=copy` | pass | 16-10-26, 186 packages from existing store, no download |
 | `pnpm build` | pass | 16-10-26, 6 packages |
 | Exact-head CI | not_run | Inspect after PR push |
@@ -64,6 +64,7 @@ False comparisons: all deliberate blocker variants return null. Erroneous suppre
 - [x] Pure comparison, DB wrapper and synthetic regressions implemented.
 - [x] Local unit, architecture and disposable-DB behavior checked.
 - [x] Final local checks and diff review.
+- [x] PR #11 review against Option A: added regressions for isolated valid noise, midweek connector switch and numeric recomputation after DB correction; no comparator or DB boundary code change needed.
 - [ ] Exact-head CI and implementation PR review.
 
 ## 10. Decision log

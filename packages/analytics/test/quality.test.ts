@@ -186,6 +186,38 @@ test('one missing date, a missing week and sparse observations suppress comparis
   }
 });
 
+test('one valid outlier does not invent a shift, while a midweek connector switch blocks it', () => {
+  const facts = completeWeeks();
+  const noisy = facts.map((fact, index) =>
+    index === 10
+      ? {
+          ...fact,
+          value: { kind: 'quantity', canonicalUnit: 'h', canonicalValue: 25 },
+        }
+      : fact,
+  );
+  const noiseResult = evaluateSleepPeriodComparison(noisy, periodWindow);
+  expect(noiseResult.status).toBe('sufficient');
+  expect(noiseResult.comparison).toMatchObject({
+    previousMedianHours: 8,
+    currentMedianHours: 8,
+    absoluteDeltaHours: 0,
+    direction: 'stable',
+  });
+
+  const switched = facts.map((fact, index) =>
+    index === 10
+      ? { ...fact, supports: [{ ...fact.supports[0]!, connectorId: 'other' }] }
+      : fact,
+  );
+  const switchResult = evaluateSleepPeriodComparison(switched, periodWindow);
+  expect(switchResult.quality.current.sourceContinuity.status).toBe(
+    'transition',
+  );
+  expect(switchResult.reasons).toContain('source_continuity_unproven');
+  expect(switchResult.comparison).toBeNull();
+});
+
 test('source switch, overlap, invalid point, conflict and missing Raw support block numbers', () => {
   const facts = completeWeeks();
   const variants: SleepFactRow[][] = [
