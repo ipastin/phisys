@@ -5,30 +5,32 @@ import {
 } from '@myphisys/database';
 
 export type MetricDefinition = {
-  id: 'sleep_duration';
-  version: string;
-  conceptId: 'sleep_duration';
-  measurementClass: 'device_derived';
-  temporalClass: 'daily';
-  canonicalUnit: 'h';
-  aggregationPolicy: 'unique_local_dates';
-  baselinePolicy: 'lagged_rolling_median';
-  trendPolicy: 'descriptive';
-  interpretationPolicy: 'none';
-  qualityPolicy: {
-    minimumDays: number;
-    limitedCoverage: number;
-    sufficientCoverage: number;
-    maximumFreshnessDays: number;
+  readonly id: 'sleep_duration';
+  readonly version: string;
+  readonly conceptId: 'sleep_duration';
+  readonly measurementClass: 'device_derived';
+  readonly temporalClass: 'daily';
+  readonly canonicalUnit: 'h';
+  readonly aggregationPolicy: 'unique_local_dates';
+  readonly baselinePolicy: 'lagged_rolling_median';
+  readonly trendPolicy: 'descriptive';
+  readonly interpretationPolicy: 'none';
+  readonly qualityPolicy: {
+    readonly minimumDays: number;
+    readonly limitedCoverage: number;
+    readonly sufficientCoverage: number;
+    readonly maximumFreshnessDays: number;
+    readonly minimumDurationHours: number;
+    readonly maximumDurationHours: number;
   };
-  baselineParameters: {
-    referenceDays: number;
-    currentDays: number;
-    minimumReferenceDays: number;
+  readonly baselineParameters: {
+    readonly referenceDays: number;
+    readonly currentDays: number;
+    readonly minimumReferenceDays: number;
   };
 };
 
-export const sleepDuration: MetricDefinition = {
+export const sleepDuration: MetricDefinition = Object.freeze({
   id: 'sleep_duration',
   version: '1.1.0',
   conceptId: 'sleep_duration',
@@ -39,19 +41,22 @@ export const sleepDuration: MetricDefinition = {
   baselinePolicy: 'lagged_rolling_median',
   trendPolicy: 'descriptive',
   interpretationPolicy: 'none',
-  qualityPolicy: {
+  qualityPolicy: Object.freeze({
     minimumDays: 7,
     limitedCoverage: 0.5,
     sufficientCoverage: 0.8,
     maximumFreshnessDays: 7,
-  },
-  baselineParameters: {
+    minimumDurationHours: 0,
+    // shortcut: 25h allows a one-hour fall-back day; use timezone-aware bounds when source zone data exists.
+    maximumDurationHours: 25,
+  }),
+  baselineParameters: Object.freeze({
     referenceDays: 28,
     currentDays: 7,
     minimumReferenceDays: 21,
-  },
-};
-export const metricRegistry = { sleep_duration: sleepDuration } as const;
+  }),
+});
+export const metricRegistry = Object.freeze({ sleep_duration: sleepDuration });
 
 export type QualityWindow = {
   startDate: string;
@@ -150,12 +155,6 @@ export function evaluateSleepQuality(
   let unresolvedConflict = false;
 
   for (const fact of [...facts].sort((a, b) => a.id.localeCompare(b.id))) {
-    factIds.add(fact.id);
-    for (const support of fact.supports) {
-      rawRecordIds.add(support.rawId);
-      sourceIds.add(support.sourceId);
-      supports.set(support.rawId, support);
-    }
     const effective = fact.effective as {
       kind?: unknown;
       value?: unknown;
@@ -169,13 +168,32 @@ export function evaluateSleepQuality(
       effective?.kind === 'local_date' && typeof effective.value === 'string'
         ? effective.value
         : '';
+    let validDate = true;
+    try {
+      day(date);
+    } catch {
+      validDate = false;
+    }
+    if (
+      validDate &&
+      (date < window.startDate || date >= window.endDateExclusive)
+    )
+      continue;
+    factIds.add(fact.id);
+    for (const support of fact.supports) {
+      rawRecordIds.add(support.rawId);
+      sourceIds.add(support.sourceId);
+      supports.set(support.rawId, support);
+    }
     const valid =
-      date >= window.startDate &&
-      date < window.endDateExclusive &&
+      validDate &&
       value?.kind === 'quantity' &&
       typeof value.canonicalValue === 'number' &&
       Number.isFinite(value.canonicalValue) &&
-      value.canonicalUnit === sleepDuration.canonicalUnit;
+      value.canonicalUnit === sleepDuration.canonicalUnit &&
+      value.canonicalValue >=
+        sleepDuration.qualityPolicy.minimumDurationHours &&
+      value.canonicalValue <= sleepDuration.qualityPolicy.maximumDurationHours;
     if (!valid || fact.supports.length === 0 || fact.has_unresolved_conflict) {
       excludedFactIds.push(fact.id);
       if (!valid) invalidPoint = true;
@@ -260,7 +278,7 @@ export function evaluateSleepQuality(
     metricId: sleepDuration.id,
     metricDefinitionVersion: sleepDuration.version,
     algorithmVersion: 'sleep-quality-v1',
-    parameters: sleepDuration.qualityPolicy,
+    parameters: Object.freeze({ ...sleepDuration.qualityPolicy }),
     window,
     status,
     reasons,
@@ -363,7 +381,7 @@ export function evaluateSleepBaselineTrend(
   window: QualityWindow,
 ): SleepBaselineTrendResult {
   const { start, end } = checkedWindow(window);
-  const parameters = sleepDuration.baselineParameters;
+  const parameters = Object.freeze({ ...sleepDuration.baselineParameters });
   if ((end - start) / dayMs !== parameters.currentDays)
     throw new Error('Current window must be exactly 7 local dates');
   const referenceStart = new Date(start - parameters.referenceDays * dayMs)
@@ -392,18 +410,10 @@ export function evaluateSleepBaselineTrend(
       date < window.endDateExclusive
     );
   });
-  const combinedFacts = facts.filter((fact) => {
-    const date = (fact.effective as { value?: unknown } | null)?.value;
-    return (
-      typeof date !== 'string' ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-      (date >= referenceStart && date < window.endDateExclusive)
-    );
-  });
   const quality = {
     reference: evaluateSleepQuality(referenceFacts, referenceWindow),
     current: evaluateSleepQuality(currentFacts, window),
-    combined: evaluateSleepQuality(combinedFacts, combinedWindow),
+    combined: evaluateSleepQuality(facts, combinedWindow),
   };
   const blockers: string[] = [];
   if (
