@@ -143,6 +143,7 @@ test('M1 golden gives lagged 28-day median, MAD/IQR and descriptive 7-day delta'
     minimumReferenceDays: 21,
   });
   expect(result.status).toBe('limited');
+  expect(result.reasons).toContain('reference_unverified_inputs');
   expect(result.baseline).toMatchObject({
     window: { startDate: '2026-01-01', endDateExclusive: '2026-01-29' },
     sampleDays: 28,
@@ -156,6 +157,62 @@ test('M1 golden gives lagged 28-day median, MAD/IQR and descriptive 7-day delta'
   expect(
     evaluateSleepBaselineTrend([...facts].reverse(), baselineWindow),
   ).toEqual(result);
+  expect(
+    evaluateSleepBaselineTrend(
+      [
+        {
+          ...facts[0]!,
+          id: 'before-reference-window',
+          effective: { kind: 'local_date', value: '2025-12-31' },
+        },
+        ...sleepFacts(),
+      ],
+      baselineWindow,
+    ),
+  ).toEqual(result);
+});
+
+test('odd reference sample uses inclusive Tukey hinges for IQR', () => {
+  const facts = sleepFacts()
+    .filter((fact) => {
+      const date = (fact.effective as { value: string }).value;
+      return date >= '2026-01-08' && date < '2026-02-05';
+    })
+    .map((fact) => {
+      const date = (fact.effective as { value: string }).value;
+      return {
+        ...fact,
+        value: {
+          kind: 'quantity',
+          canonicalUnit: 'h',
+          canonicalValue: date < '2026-01-29' ? Number(date.slice(-2)) - 7 : 11,
+        },
+      };
+    });
+  const result = evaluateSleepBaselineTrend(facts, baselineWindow);
+  expect(result.status).toBe('limited');
+  expect(result.baseline).toMatchObject({
+    sampleDays: 21,
+    medianHours: 11,
+    madHours: 5,
+    iqrHours: 10,
+  });
+  expect(result.trend?.absoluteDeltaHours).toBe(0);
+});
+
+test('limited baseline names incomplete coverage and stale reference', () => {
+  const facts = sleepFacts().filter((fact) => {
+    const date = (fact.effective as { value: string }).value;
+    return (
+      date <= '2026-01-21' || (date >= '2026-01-29' && date < '2026-02-05')
+    );
+  });
+  const result = evaluateSleepBaselineTrend(facts, baselineWindow);
+  expect(result.status).toBe('limited');
+  expect(result.reasons).toContain('reference_incomplete_coverage');
+  expect(result.reasons).toContain('reference_stale');
+  expect(result.reasons).toContain('reference_unverified_inputs');
+  expect(result.baseline?.sampleDays).toBe(21);
 });
 
 test('current shift and isolated reference outlier cannot contaminate lagged baseline', () => {

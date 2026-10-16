@@ -348,7 +348,8 @@ function dispersion(sorted: number[]): { mad: number; iqr: number } {
   const deviations = sorted
     .map((value) => Math.abs(value - center))
     .sort((a, b) => a - b);
-  const half = Math.floor(sorted.length / 2);
+  // Inclusive Tukey hinges: an odd sample's median belongs to both halves.
+  const half = Math.ceil(sorted.length / 2);
   return {
     mad: median(deviations),
     iqr:
@@ -391,26 +392,38 @@ export function evaluateSleepBaselineTrend(
       date < window.endDateExclusive
     );
   });
+  const combinedFacts = facts.filter((fact) => {
+    const date = (fact.effective as { value?: unknown } | null)?.value;
+    return (
+      typeof date !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      (date >= referenceStart && date < window.endDateExclusive)
+    );
+  });
   const quality = {
     reference: evaluateSleepQuality(referenceFacts, referenceWindow),
     current: evaluateSleepQuality(currentFacts, window),
-    combined: evaluateSleepQuality(facts, combinedWindow),
+    combined: evaluateSleepQuality(combinedFacts, combinedWindow),
   };
-  const reasons: string[] = [];
+  const blockers: string[] = [];
   if (
     quality.reference.coverage.observedDays < parameters.minimumReferenceDays ||
     quality.reference.status === 'insufficient'
   )
-    reasons.push('insufficient_reference');
+    blockers.push('insufficient_reference');
   if (quality.current.status === 'insufficient')
-    reasons.push('insufficient_current');
+    blockers.push('insufficient_current');
   if (
     quality.combined.sourceContinuity.status !== 'continuous' ||
     quality.combined.sourceContinuity.connectorIds.length !== 1
   )
-    reasons.push('source_continuity_unproven');
-  if (quality.combined.sameDayExtraFactCount) reasons.push('overlapping_day');
-  if (quality.combined.excludedFactIds.length) reasons.push('excluded_inputs');
+    blockers.push('source_continuity_unproven');
+  if (quality.combined.sameDayExtraFactCount) blockers.push('overlapping_day');
+  if (quality.combined.excludedFactIds.length) blockers.push('excluded_inputs');
+  const limitations = (['reference', 'current', 'combined'] as const).flatMap(
+    (period) => quality[period].reasons.map((reason) => `${period}_${reason}`),
+  );
+  const reasons = [...blockers, ...limitations];
   const base = {
     metricId: sleepDuration.id,
     metricDefinitionVersion: sleepDuration.version,
@@ -421,7 +434,7 @@ export function evaluateSleepBaselineTrend(
     quality,
     calculatedAt: window.calculatedAt,
   };
-  if (reasons.length)
+  if (blockers.length)
     return { ...base, status: 'insufficient', baseline: null, trend: null };
 
   const values = (rows: SleepFactRow[]) =>
@@ -436,9 +449,7 @@ export function evaluateSleepBaselineTrend(
   const { mad, iqr } = dispersion(reference);
   return {
     ...base,
-    status: Object.values(quality).some((item) => item.status === 'limited')
-      ? 'limited'
-      : 'sufficient',
+    status: limitations.length ? 'limited' : 'sufficient',
     baseline: {
       window: { startDate: referenceStart, endDateExclusive: window.startDate },
       sampleDays: quality.reference.coverage.observedDays,
