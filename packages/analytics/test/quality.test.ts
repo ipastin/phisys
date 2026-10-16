@@ -45,7 +45,7 @@ function sleepFacts(): SleepFactRow[] {
 test('versioned sleep profile and M1 golden quality preserve missing week and source handoff', () => {
   expect(sleepDuration).toMatchObject({
     id: 'sleep_duration',
-    version: '1.0.1',
+    version: '1.0.2',
     canonicalUnit: 'h',
     temporalClass: 'daily',
     qualityPolicy: { minimumDurationHours: 0, maximumDurationHours: 25 },
@@ -79,11 +79,47 @@ test('versioned sleep profile and M1 golden quality preserve missing week and so
   expect(quality.reasons).toContain('unverified_inputs');
   expect(quality.duplicateReceiptCount).toBe('unavailable');
   expect(quality.provenance.factIds).toHaveLength(83);
+  expect(quality.provenance.factSupports).toHaveLength(83);
   expect(quality.parameters).toEqual(sleepDuration.qualityPolicy);
   expect(quality.provenance.supports[0]).toMatchObject({
     version: 1,
     transformation: 'm1-map-v1',
   });
+});
+
+test('per-fact Raw supports distinguish swapped lineage while aggregates stay stable', () => {
+  const facts = sleepFacts()
+    .slice(0, 2)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const original = evaluateSleepQuality(facts, window);
+  const swapped = evaluateSleepQuality(
+    [
+      { ...facts[0]!, supports: facts[1]!.supports },
+      { ...facts[1]!, supports: facts[0]!.supports },
+    ],
+    window,
+  );
+  expect(original.provenance.factSupports).toEqual(
+    facts.map((fact) => ({ factId: fact.id, supports: fact.supports })),
+  );
+  expect(swapped.provenance.factSupports).not.toEqual(
+    original.provenance.factSupports,
+  );
+  expect(swapped.provenance.factIds).toEqual(original.provenance.factIds);
+  expect(swapped.provenance.rawRecordIds).toEqual(
+    original.provenance.rawRecordIds,
+  );
+  expect(swapped.provenance.sourceIds).toEqual(original.provenance.sourceIds);
+  expect(swapped.provenance.supports).toEqual(original.provenance.supports);
+
+  const missing = evaluateSleepQuality(
+    [{ ...facts[0]!, supports: [] }],
+    window,
+  );
+  expect(missing.provenance.factSupports).toEqual([
+    { factId: facts[0]!.id, supports: [] },
+  ]);
+  expect(missing.excludedFactIds).toContain(facts[0]!.id);
 });
 
 test('versioned policy and returned parameters cannot change a later result', () => {

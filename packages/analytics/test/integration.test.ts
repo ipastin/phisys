@@ -75,6 +75,12 @@ test('person-scoped reader traces current facts to active Raw sources', async ()
   expect(quality.sourceContinuity.status).toBe('transition');
   expect(quality.provenance.rawRecordIds).toHaveLength(83);
   expect(quality.provenance.supports).toHaveLength(83);
+  expect(quality.provenance.factSupports).toHaveLength(83);
+  expect(
+    quality.provenance.factSupports.find(
+      ({ factId }) => factId === facts[0]?.id,
+    )?.supports,
+  ).toEqual(facts[0]?.supports);
   expect(quality.provenance.supports[0]).toMatchObject({
     version: 1,
     transformation: 'm1-map-v1',
