@@ -145,3 +145,27 @@ test('analytics role isolates persons and has no Raw or Canonical write privileg
     raw.release();
   }
 });
+
+test('M1 accepts finite outlier but Quality excludes it from person-scoped samples', async () => {
+  const record = goldenRecords(personB).find(
+    (item) => item.payload.conceptId === 'sleep_duration',
+  )!;
+  expect(
+    (
+      await ingest(writer, {
+        ...record,
+        externalRecordId: 'person-b-impossible-sleep',
+        payload: {
+          ...record.payload,
+          effective: { kind: 'local_date', value: '2026-01-02' },
+          value: { kind: 'quantity', originalValue: 1000, originalUnit: 'h' },
+        },
+      })
+    ).state,
+  ).toBe('imported');
+  const quality = await sleepQuality(reader, personB, window);
+  expect(quality.sampleCount).toBe(1);
+  expect(quality.coverage.observedDays).toBe(1);
+  expect(quality.excludedFactIds).toHaveLength(1);
+  expect(quality.reasons).toContain('invalid_point');
+});

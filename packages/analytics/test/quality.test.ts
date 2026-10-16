@@ -45,9 +45,10 @@ function sleepFacts(): SleepFactRow[] {
 test('versioned sleep profile and M1 golden quality preserve missing week and source handoff', () => {
   expect(sleepDuration).toMatchObject({
     id: 'sleep_duration',
-    version: '1.0.0',
+    version: '1.0.1',
     canonicalUnit: 'h',
     temporalClass: 'daily',
+    qualityPolicy: { minimumDurationHours: 0, maximumDurationHours: 25 },
   });
   expect(metricRegistry.sleep_duration).toBe(sleepDuration);
   const quality = evaluateSleepQuality(sleepFacts(), window);
@@ -83,6 +84,114 @@ test('versioned sleep profile and M1 golden quality preserve missing week and so
     version: 1,
     transformation: 'm1-map-v1',
   });
+});
+
+test('versioned policy and returned parameters cannot change a later result', () => {
+  const facts = sleepFacts();
+  const result = evaluateSleepQuality(facts, window);
+  expect(result.parameters).not.toBe(sleepDuration.qualityPolicy);
+  expect(Object.isFrozen(sleepDuration)).toBe(true);
+  expect(Object.isFrozen(sleepDuration.qualityPolicy)).toBe(true);
+  expect(Object.isFrozen(metricRegistry)).toBe(true);
+  expect(Object.isFrozen(result.parameters)).toBe(true);
+  expect(() => Object.assign(result.parameters, { minimumDays: 100 })).toThrow(
+    TypeError,
+  );
+  expect(() =>
+    Object.assign(sleepDuration.qualityPolicy, { minimumDays: 100 }),
+  ).toThrow(TypeError);
+  expect(evaluateSleepQuality(facts, window)).toEqual(result);
+});
+
+test('daily duration validity excludes impossible values without turning missing into zero', () => {
+  const sevenDays = sleepFacts()
+    .filter(
+      (fact) => (fact.effective as { value: string }).value < '2026-01-08',
+    )
+    .map((fact, index) =>
+      index < 2
+        ? {
+            ...fact,
+            value: {
+              kind: 'quantity',
+              canonicalValue: index === 0 ? 0 : 25,
+              canonicalUnit: 'h',
+            },
+          }
+        : fact,
+    );
+  const sevenDayWindow = {
+    ...window,
+    endDateExclusive: '2026-01-08',
+    asOfDate: '2026-01-08',
+  };
+  expect(
+    evaluateSleepQuality(sevenDays, sevenDayWindow).coverage.observedDays,
+  ).toBe(7);
+  for (const impossibleHours of [-1, 25.1, 1000]) {
+    const invalid = sevenDays.map((fact, index) =>
+      index === 0
+        ? {
+            ...fact,
+            value: {
+              kind: 'quantity',
+              canonicalValue: impossibleHours,
+              canonicalUnit: 'h',
+            },
+          }
+        : fact,
+    );
+    const quality = evaluateSleepQuality(invalid, sevenDayWindow);
+    expect(quality.coverage.observedDays).toBe(6);
+    expect(quality.sampleCount).toBe(6);
+    expect(quality.missingDates).toContain('2026-01-01');
+    expect(quality.excludedFactIds).toContain(sevenDays[0]!.id);
+    expect(quality.reasons).toContain('invalid_point');
+    expect(quality.status).toBe('insufficient');
+  }
+});
+
+test('pure Quality ignores dated facts outside its window and excludes malformed dates', () => {
+  const facts = sleepFacts();
+  const narrowWindow = {
+    ...window,
+    startDate: '2026-01-29',
+    endDateExclusive: '2026-02-05',
+    asOfDate: '2026-02-05',
+  };
+  const scoped = facts.filter((fact) => {
+    const date = (fact.effective as { value: string }).value;
+    return (
+      date >= narrowWindow.startDate && date < narrowWindow.endDateExclusive
+    );
+  });
+  const quality = evaluateSleepQuality(scoped, narrowWindow);
+  expect(
+    evaluateSleepQuality(
+      [
+        {
+          ...facts[0]!,
+          id: 'before-window',
+          effective: { kind: 'local_date', value: '2025-12-31' },
+        },
+        ...facts,
+      ],
+      narrowWindow,
+    ),
+  ).toEqual(quality);
+  const invalid = evaluateSleepQuality(
+    [
+      ...scoped,
+      {
+        ...scoped[0]!,
+        id: 'invalid-calendar-date',
+        effective: { kind: 'local_date', value: '2026-02-30' },
+      },
+    ],
+    narrowWindow,
+  );
+  expect(invalid.excludedFactIds).toContain('invalid-calendar-date');
+  expect(invalid.reasons).toContain('invalid_point');
 });
 
 test('missing week can make a window insufficient, and row order cannot change the result', () => {
