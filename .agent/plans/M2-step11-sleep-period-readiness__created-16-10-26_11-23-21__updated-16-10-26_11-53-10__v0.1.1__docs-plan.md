@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 11 synthetic sleep period readiness
 created: "16-10-26 11-23-21"
-updated: "16-10-26 11-33-23"
+updated: "16-10-26 11-53-10"
 timezone: Europe/Moscow
-version: 0.1.0
-commit: "docs(plan): draft M2 Step 11 sleep period readiness"
+version: 0.1.1
+commit: "docs(plan): record Step 11 draft PR evidence"
 status: draft
 ---
 
@@ -16,7 +16,7 @@ Define a reviewable Step 11 contract for synthetic `sleep_duration` after the me
 
 ## 2. Status / Authorization
 
-`draft`, owner: Igor Pastin. The 16-10-26 request authorizes planning/readiness in a fresh `codex/*` branch and a docs-only PR. It does not authorize Step 11 code, merge, deploy or real health data. Review of the three scope options and the recommended contract is the next owner gate. Clinical thresholds, health risk scores, canonical model, accepted ADR, safety/privacy and approved UX changes remain separate decisions.
+`draft`, owner: Igor Pastin. The 16-10-26 request authorizes planning/readiness in a fresh `codex/*` branch and a docs-only [PR #10](https://github.com/ipastin/phisys/pull/10). It does not authorize Step 11 code, merge, deploy or real health data. Review of the three scope options and the recommended contract is the next owner gate. Clinical thresholds, health risk scores, canonical model, accepted ADR, safety/privacy and approved UX changes remain separate decisions.
 
 ## 3. Context / Sources
 
@@ -92,7 +92,7 @@ Map to EVALS A02–A03, A06–A12, A14 and A20; A07's sparse-lab latest/previous
 - [x] 16-10-26 11-23 Europe/Moscow: fetched `origin/main`, verified clean predecessor checkout and created `codex/m2-step11-readiness` from `0b9dc9e84f6b9a3b6bdf863a90efd418b6a5e84c`.
 - [x] Read source index, ExecPlan contract, Project Spec v0.4.0, PR #6 historical draft, merged M2 code, readers, callers/tests/fixtures/config/exports.
 - [x] 16-10-26 11-33 Europe/Moscow: validated all 22 relative links, Markdown metadata and 13 required sections; public-content scan found no records, credentials or local paths.
-- [ ] Review and publish this docs-only plan as a PR; artifact checks and exact-head CI are recorded at handoff.
+- [x] 16-10-26 11-50 Europe/Moscow: opened docs-only [draft PR #10](https://github.com/ipastin/phisys/pull/10) against `main`; initial head `cd05f25954d9c5e78c9d99faae65d338e4478d7e` passed `validate` ([run 38876243345](https://github.com/ipastin/phisys/actions/runs/38876243345)). Final head must be checked again after this evidence update.
 - [ ] Owner decision on Option A/B/C and separate implementation start.
 - [ ] Step 11 runtime and disposable-DB checks: `not_run`.
 
@@ -100,7 +100,9 @@ Map to EVALS A02–A03, A06–A12, A14 and A20; A07's sparse-lab latest/previous
 | --- | --- | --- |
 | `git fetch origin main`; `git status --short --branch`; `git rev-parse origin/main`, repository root, base `0b9dc9e84f6b9a3b6bdf863a90efd418b6a5e84c` | `pass` | Fresh main, clean checkout, new branch from exact SHA. |
 | Python link/structure check and `rg` public-content scan; repository root, precommit branch at `0b9dc9e84f6b9a3b6bdf863a90efd418b6a5e84c`, 16-10-26 11-33 MSK | `pass` | 22 relative links resolved, sections 1–13 present; no records, credentials or local paths found in plan. Staged diff check follows before commit. |
-| PR exact-head CI | `needs_review` | Inspect after docs-only push; do not promote an older run. |
+| `git diff --cached --check`; repository root, `cd05f25954d9c5e78c9d99faae65d338e4478d7e`, 16-10-26 11-33 MSK | `pass` | One new Markdown file, no whitespace errors; PR #10 initial diff confirms one file. |
+| PR #10 initial head `cd05f25954d9c5e78c9d99faae65d338e4478d7e` [run 38876243345](https://github.com/ipastin/phisys/actions/runs/38876243345), 16-10-26 11-50 MSK | `pass` | GitHub `validate` success. CodeRabbit reports “Review skipped: draft pull request,” so no substantive automated review evidence. |
+| PR #10 final-head CI after this evidence update | `needs_review` | Inspect after push; the initial run does not validate the later commit. |
 | Runtime pnpm and disposable-DB Step 11 behavior | `not_run` | Planning only; merged Step 10 CI does not prove proposed Step 11. |
 
 ## 10. Decision log
