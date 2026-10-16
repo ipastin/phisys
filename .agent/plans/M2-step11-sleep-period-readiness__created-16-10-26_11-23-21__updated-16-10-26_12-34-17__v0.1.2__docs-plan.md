@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 11 synthetic sleep period readiness
 created: "16-10-26 11-23-21"
-updated: "16-10-26 11-53-10"
+updated: "16-10-26 12-34-17"
 timezone: Europe/Moscow
-version: 0.1.1
-commit: "docs(plan): record Step 11 draft PR evidence"
+version: 0.1.2
+commit: "docs(plan): clarify Step 11 quality and validation gates"
 status: draft
 ---
 
@@ -25,6 +25,7 @@ Define a reviewable Step 11 contract for synthetic `sleep_duration` after the me
 - Step 11 sources: [04 ANALYTICS](../../docs/project-spec/v0.4.0/04_ANALYTICS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md) §§2–11, 21–22; [11 IMPLEMENTATION](../../docs/project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md) §8 Steps 08–14; [12 EVALS](../../docs/project-spec/v0.4.0/12_EVALS__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md) §§2–6; [13 ADR](../../docs/project-spec/v0.4.0/13_ADR__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md) ADR-054–064. Source packs remain unchanged.
 - Historical [M2.0 draft PR #6](https://github.com/ipastin/phisys/pull/6) is still open and based on older M1 `main`; its staged order and negative cases inform this plan, while current merged code and v0.4.0 sources govern exact contracts. [M2.1 execution record](M2.1-sleep-registry-quality__created-16-10-26_00-21-10__updated-16-10-26_09-52-46__v0.1.4__docs-plan.md) and [M2.2 execution record](M2.2-sleep-baseline-trend__created-16-10-26_07-07-41__updated-16-10-26_10-37-06__v0.1.6__docs-plan.md) are implementation evidence with historical status fields.
 - `sleepDuration` registry version `1.1.0` declares `device_derived`, `daily`, canonical hours, unique local dates, frozen Quality policy (minimum seven observed days, coverage/freshness, nonclinical 0–25 h validity) and lagged baseline parameters `28/7/21`. `evaluateSleepBaselineTrend` already compares current seven-day median with the preceding 28-day reference; it returns a descriptive delta/direction, not a persistent slope. `readCurrentSleepFacts` reads current person-scoped facts and active Raw supports under `BEGIN READ ONLY` and `myphisys_analytics`. No production caller outside analytics tests exists.
+- Current Quality source continuity is based on `connectorId`. M1 has one `sourceId` per `(person_id, connector_id)` and does not expose physical device or measurement method identity to this reader. A device/method change within one connector is therefore not detectable by this gate.
 - Project `13 ADR` marks ADR-054–064 Accepted. `SOURCE_OF_TRUTH` separately flags an unresolved header/status ambiguity for ADR-151–170; Step 11 here does not depend on those later ADRs.
 
 ## 4. Scope / Non-goals and alternatives
@@ -41,7 +42,7 @@ Recommendation **A** for the first Step 11 implementation slice. The accepted so
 
 1. **Windows and interpretation.** Require an exact seven-local-date current `QualityWindow`; previous is the adjacent, nonoverlapping seven dates. Compare medians in hours; `absoluteDeltaHours = currentMedian − previousMedian`, `relativeDelta = null` when previous median is zero, and sign-only direction `increasing/decreasing/stable`. Label the result `period comparison`, not slope, persistence or health benefit/harm. Step 10's separate 28-day lagged reference and `28/7/21` parameters stay intact; the previous week is not renamed “baseline.”
 2. **Input and Quality.** Reuse current `SleepFactRow[]` and `evaluateSleepQuality` for previous, current and combined 14-day windows. Previous Quality uses its period end as `asOfDate`; current/combined use the caller's `asOfDate` and fixed `calculatedAt`. This is period-relative freshness metadata, not “what was known then.” For each seven-day window, the existing `minimumDays: 7` requires seven distinct valid local dates. `sampleCount` may exceed observed days because extra same-day facts are counted separately.
-3. **Blocking gate.** Return `status: insufficient` and `comparison: null` when either period Quality is `insufficient`; when combined source continuity is not one proven-continuous connector; or when either/combined Quality reports excluded inputs, missing Raw support, unresolved conflict, same-day overlap or invalid point. Valid dated facts outside the combined 14 days do not enter the gate or provenance. No connector-ID equivalence, source-method compatibility or cross-source stitching is inferred.
+3. **Blocking gate.** Return `status: insufficient` and `comparison: null` when either period Quality is `insufficient`; when combined Quality does not report `sourceContinuity.status: continuous` with exactly one `connectorId`; or when either/combined Quality reports excluded inputs, missing Raw support, unresolved conflict, same-day overlap or invalid point. This proves continuity only at connector level: it suppresses a connector switch, but cannot detect a device/method change within the same connector. Do not label the result device- or method-continuous or infer cross-source compatibility. A stronger gate needs a separate source-metadata decision. Dated facts outside the combined 14 days do not enter the gate or provenance.
 4. **Qualified result.** A full, single-source, one-fact-per-day comparison may return `limited` with a numeric descriptive delta when Quality's remaining reason is nonblocking, such as `unverified_inputs` or historical staleness. Carry period-prefixed reasons (`previous_*`, `current_*`, `combined_*`); a `limited` result is not an InsightCandidate or a strong claim. Same inputs, versions, parameters, windows and fixed clock must reproduce the same semantic result, independent of row order.
 5. **Sparse input.** Zero to six observed days in either week retains expected/observed days and `missingDates` through nested Quality and produces no median comparison; two points never become a trend. Missing is unknown, never zero or normal. A lab-like latest/previous `delta`, interpolation, per-day slope and persistence belong to later metric-specific scopes, not this daily sleep result.
 6. **Provenance and privacy.** Proposed output includes metric/profile and algorithm versions, frozen comparison parameters, both windows, `calculatedAt`, nested Quality with `factSupports`/aggregate Raw/source IDs, status and reasons. The DB caller, if approved, reads the 14-day span once through `readCurrentSleepFacts`; it never writes Raw/Canonical or exposes Raw payload. `asOfDate` controls calculation metadata, not historical knowledge-as-of: M1 exposes current projection and cannot reconstruct past database knowledge without a separate lifecycle decision.
@@ -71,21 +72,23 @@ From repository root on a **new** `codex/*` branch based on then-fresh `main`, a
 
 ## 8. Validation / Acceptance
 
-**Planning artifact gate:** link and metadata audit, exactly one new Markdown file, source/ADR traceability, `git diff --cached --check`, public-content scan, PR base/head and exact-head CI. These verify the plan, not Step 11 runtime. Product tests and disposable DB are `not_run` in M2 Step 11 planning.
+**Planning artifact gate:** link and metadata audit, exactly one new Markdown file, source/ADR traceability, `git diff --cached --check`, public-content scan, PR base/head and exact-head CI. The prior PR head `3f360af9486192dd7411771d3e45deabd1bf1dd0` passed CI `pnpm` and disposable-DB checks ([run 38876960762](https://github.com/ipastin/phisys/actions/runs/38876960762)); local checks were `not_run`. Those CI checks exercise existing M1/M2.1/M2.2 behavior, not the proposed Step 11 comparator. Step 11 behavioral golden and DB regressions remain `not_run`; exact-head CI must be checked again after this documentation revision.
 
 | Synthetic regression for approved Option A | Expected Step 11 implementation result |
 | --- | --- |
 | Full adjacent weeks, stable and shifted values | Correct two medians and signed delta; same-value weeks yield `stable`; shifted complete weeks yield descriptive direction without persistence or clinical judgement. Step 10's 28-day baseline is unchanged by current-week shift. |
+| Seven local-date windows across leap day and spring/fall DST boundaries | Start date included, end date excluded, exactly seven distinct local-date labels per period; 23/25-hour days do not change expected-day counts or create overlap. Invalid calendar dates fail validation. Map to EVALS A04–A05. |
+| Seven valid zero-hour observations in previous week, nonzero current median | Absolute delta and descriptive direction remain defined; `relativeDelta: null`, never `Infinity`/`NaN`. Zero is a syntactically valid duration under the current nonclinical Quality policy, not a claim of healthy sleep. |
 | One missing date in either week; a whole missing week; only two observations | Expected seven dates per week remain visible; missing is not zero. `insufficient`, null comparison; no fabricated slope, latest/previous sleep trend or InsightCandidate. |
 | One excluded 26 h point, malformed date, unresolved conflict, absent active Raw support, or two facts on one date | Exclusion/overlap reason and provenance visible; no numeric comparison despite apparent seven-day coverage elsewhere. Pure and DB behavior are tested where each input can occur. |
-| Connector/source switch on the boundary or within a week; two connectors on one date | Both per-period and combined Quality inspected; unproven continuity suppresses the comparison even when each separate week appears internally continuous. |
-| Valid dated fact before/after 14-day span; same facts reversed | Outside fact changes neither combined Quality nor result; row order changes neither status nor numeric/provenance payload. |
+| Connector switch on the boundary or within a week; two connectors on one date | Both per-period and combined Quality inspected; connector transition/ambiguity suppresses the comparison even when each separate week appears internally continuous. A same-connector device/method change is not observable in M1 and must not be claimed as proven continuous. |
+| Valid or invalid value with a valid local date before/after 14-day span; same in-window facts reversed | Out-of-window fact changes neither combined Quality nor result, including excluded-input reasons; row order changes neither status nor numeric/provenance payload. A malformed calendar date cannot be assigned outside a window and remains an invalid-point case. |
 | Unverified but complete single-source weeks; old `asOfDate` | Qualified `limited` descriptive result with period-specific reasons, never a strong insight. Invalid future/end-before-start windows fail before DB read. |
 | Duplicate delivery, Raw support swap, tombstone/correction | Duplicate receipt does not inflate sample/coverage; count remains `unavailable`. Per-fact Raw lineage changes under support swap; changed active supports/current facts recompute rather than reuse stale output. |
 | Two persons and attempted Raw/Canonical writes or Raw payload read | DB result and provenance isolated by person; analytics role cannot write or access Raw payload. |
 | Eligible complete shift vs isolated noise/missing/source switch | Label expected displayed descriptive comparisons and deliberate suppressions separately; report false comparisons and erroneous suppression, rather than making all cases `insufficient`. No numeric release target invented from EVALS. |
 
-Map to EVALS A02–A03, A06–A12, A14 and A20; A07's sparse-lab latest/previous interpretation remains `not_run` here. Required future commands: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `git diff --check`, and `DATABASE_URL=<disposable PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db`; then inspect PR CI on the final head. Run only with synthetic data.
+Map to EVALS A02–A06, A08–A12, A14 and A20; A07's sparse-lab latest/previous interpretation remains `not_run` here. Required future commands: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `git diff --check`, and `DATABASE_URL=<disposable PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db`; then inspect PR CI on the final head. Run only with synthetic data.
 
 ## 9. Progress and evidence
 
@@ -93,8 +96,9 @@ Map to EVALS A02–A03, A06–A12, A14 and A20; A07's sparse-lab latest/previous
 - [x] Read source index, ExecPlan contract, Project Spec v0.4.0, PR #6 historical draft, merged M2 code, readers, callers/tests/fixtures/config/exports.
 - [x] 16-10-26 11-33 Europe/Moscow: validated all 22 relative links, Markdown metadata and 13 required sections; public-content scan found no records, credentials or local paths.
 - [x] 16-10-26 11-50 Europe/Moscow: opened docs-only [draft PR #10](https://github.com/ipastin/phisys/pull/10) against `main`; initial head `cd05f25954d9c5e78c9d99faae65d338e4478d7e` passed `validate` ([run 38876243345](https://github.com/ipastin/phisys/actions/runs/38876243345)). Final head must be checked again after this evidence update.
+- [x] 16-10-26 11-56 Europe/Moscow: prior head `3f360af9486192dd7411771d3e45deabd1bf1dd0` passed exact-head `validate`, including `pnpm test:db` ([run 38876960762](https://github.com/ipastin/phisys/actions/runs/38876960762)); Step 11 behavior remains unimplemented.
 - [ ] Owner decision on Option A/B/C and separate implementation start.
-- [ ] Step 11 runtime and disposable-DB checks: `not_run`.
+- [ ] Step 11 behavioral golden and disposable-DB regressions: `not_run` because implementation has not started.
 
 | Action / cwd / SHA | Result at draft time | Evidence |
 | --- | --- | --- |
@@ -102,8 +106,9 @@ Map to EVALS A02–A03, A06–A12, A14 and A20; A07's sparse-lab latest/previous
 | Python link/structure check and `rg` public-content scan; repository root, precommit branch at `0b9dc9e84f6b9a3b6bdf863a90efd418b6a5e84c`, 16-10-26 11-33 MSK | `pass` | 22 relative links resolved, sections 1–13 present; no records, credentials or local paths found in plan. Staged diff check follows before commit. |
 | `git diff --cached --check`; repository root, `cd05f25954d9c5e78c9d99faae65d338e4478d7e`, 16-10-26 11-33 MSK | `pass` | One new Markdown file, no whitespace errors; PR #10 initial diff confirms one file. |
 | PR #10 initial head `cd05f25954d9c5e78c9d99faae65d338e4478d7e` [run 38876243345](https://github.com/ipastin/phisys/actions/runs/38876243345), 16-10-26 11-50 MSK | `pass` | GitHub `validate` success. CodeRabbit reports “Review skipped: draft pull request,” so no substantive automated review evidence. |
-| PR #10 final-head CI after this evidence update | `needs_review` | Inspect after push; the initial run does not validate the later commit. |
-| Runtime pnpm and disposable-DB Step 11 behavior | `not_run` | Planning only; merged Step 10 CI does not prove proposed Step 11. |
+| PR #10 prior head `3f360af9486192dd7411771d3e45deabd1bf1dd0` [run 38876960762](https://github.com/ipastin/phisys/actions/runs/38876960762), 16-10-26 11-56 MSK | `pass` | Exact-head `validate` ran pnpm lint, format, typecheck, test, build and disposable-DB `test:db`; no Step 11 code existed. CodeRabbit skipped draft review. |
+| PR #10 exact-head CI after this documentation revision | `needs_review` | Inspect after push; the prior run does not validate the new commit. |
+| Local pnpm/disposable-DB checks and Step 11 behavior | `not_run` | Planning only; CI passed existing behavior, not the proposed Step 11 comparator. |
 
 ## 10. Decision log
 
@@ -111,7 +116,7 @@ Map to EVALS A02–A03, A06–A12, A14 and A20; A07's sparse-lab latest/previous
 | --- | --- | --- |
 | D-11-1 scope: A strict adjacent weeks; B partial weeks; C observed-date groups | A reuses `daily`, current Quality and read-only M1 facts with the smallest new API. B increases coverage but changes Quality/version and missingness bias. C compares unequal calendar spans and needs its own gap policy. | **16-10-26: Recommend A; owner review required before code.** |
 | D-11-2 incomplete daily periods | A returns `insufficient`/null; B returns a qualified median from selected observed days. The existing `minimumDays: 7` makes A consistent and auditable; B needs explicit versioned policy/eval evidence. | **16-10-26: Recommend A.** Revisit only with labeled false-suppression evidence. |
-| D-11-3 source transitions | A suppresses comparison across unproven connector/method change; B merges connectors without compatibility proof. A preserves false-insight control at the cost of coverage. | **16-10-26: Recommend A**, consistent with ADR-063 and Step 10. |
+| D-11-3 source transitions | A suppresses detected connector transitions; B merges connectors without compatibility proof. M1 cannot detect device/method changes within a connector, so A makes no device/method continuity claim. A preserves false-insight control at the cost of coverage only for observable connector switches. | **16-10-26: Recommend A** at connector level; stronger identity needs separate decision under ADR-063. |
 | D-11-4 output claim | A calls the result descriptive period delta; B calls two weekly points a persistent trend/slope. ADR-060–061 and ANALYTICS §8 support A. | **16-10-26: Recommend A**; no clinical direction or “improving/worsening.” |
 
 These recommendations define a reviewable implementation scope, not a change to accepted ADR or a clinical threshold.
@@ -120,7 +125,7 @@ These recommendations define a reviewable implementation scope, not a change to 
 
 1. `sleep_duration` is registered as `daily`. “Sparse” in this first slice means missing daily observations; it does not authorize a new sparse sleep temporal class. Option C needs a new gap/coverage policy; sparse lab latest/previous and `hba1c` require a separate metric/canonical decision.
 2. The existing 7-day Quality `minimumDays: 7` intentionally makes even 6/7 insufficient for a seven-day comparison. Owner should decide whether that false-suppression trade-off is acceptable for the first slice (recommend yes), using labeled synthetic cases before any relaxation.
-3. The current reader exposes current facts and active Raw support, not a historical database knowledge snapshot. `asOfDate` cannot claim “what MyPhisys knew then.” Step 12's historical semantics remain separate. If source/method equivalence, persistence/cache, new privacy flow, clinical interpretation or approved UX changes are needed, stop and present a separate decision with trade-offs.
+3. The current reader exposes current facts and active Raw support, not a historical database knowledge snapshot. `asOfDate` cannot claim “what MyPhisys knew then.” Step 12's historical semantics remain separate. Connector continuity does not prove physical device/method continuity; if that stronger claim, persistence/cache, new privacy flow, clinical interpretation or approved UX changes are needed, stop and present a separate decision with trade-offs.
 4. `SOURCE_OF_TRUTH` notes ADR-151–170 status ambiguity. This plan uses ADR-054–064 only; do not silently treat the later set as resolved.
 
 ## 12. Recovery / Idempotence
