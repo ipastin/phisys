@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import type { SleepFactRow } from '@myphisys/database';
 import { goldenRecords } from '../../ingestion/test/golden.js';
 import {
+  evaluateSleepBaselineTrend,
   evaluateSleepQuality,
   metricRegistry,
   sleepDuration,
@@ -45,7 +46,7 @@ function sleepFacts(): SleepFactRow[] {
 test('versioned sleep profile and M1 golden quality preserve missing week and source handoff', () => {
   expect(sleepDuration).toMatchObject({
     id: 'sleep_duration',
-    version: '1.0.0',
+    version: '1.1.0',
     canonicalUnit: 'h',
     temporalClass: 'daily',
   });
@@ -122,4 +123,144 @@ test('invalid windows fail before DB access or daily enumeration', () => {
   expect(() =>
     evaluateSleepQuality([], { ...window, asOfDate: '2026-03-01' }),
   ).toThrow();
+});
+
+const baselineWindow: QualityWindow = {
+  startDate: '2026-01-29',
+  endDateExclusive: '2026-02-05',
+  asOfDate: '2026-02-05',
+  calculatedAt: '2026-02-05T00:00:00Z',
+};
+
+test('M1 golden gives lagged 28-day median, MAD/IQR and descriptive 7-day delta', () => {
+  const facts = sleepFacts().filter(
+    (fact) => (fact.effective as { value: string }).value < '2026-02-05',
+  );
+  const result = evaluateSleepBaselineTrend(facts, baselineWindow);
+  expect(result.parameters).toEqual({
+    referenceDays: 28,
+    currentDays: 7,
+    minimumReferenceDays: 21,
+  });
+  expect(result.status).toBe('limited');
+  expect(result.baseline).toMatchObject({
+    window: { startDate: '2026-01-01', endDateExclusive: '2026-01-29' },
+    sampleDays: 28,
+  });
+  expect(result.baseline?.medianHours).toBeCloseTo(7.5675);
+  expect(result.baseline?.madHours).toBeCloseTo(0.035);
+  expect(result.baseline?.iqrHours).toBeCloseTo(0.07);
+  expect(result.trend?.currentMedianHours).toBeCloseTo(7.655);
+  expect(result.trend?.absoluteDeltaHours).toBeCloseTo(0.0875);
+  expect(result.trend?.direction).toBe('increasing');
+  expect(
+    evaluateSleepBaselineTrend([...facts].reverse(), baselineWindow),
+  ).toEqual(result);
+});
+
+test('current shift and isolated reference outlier cannot contaminate lagged baseline', () => {
+  const facts = sleepFacts()
+    .filter(
+      (fact) => (fact.effective as { value: string }).value < '2026-02-05',
+    )
+    .map((fact) => {
+      const date = (fact.effective as { value: string }).value;
+      return {
+        ...fact,
+        value: {
+          kind: 'quantity',
+          canonicalUnit: 'h',
+          canonicalValue:
+            date === '2026-01-01'
+              ? 1
+              : date < '2026-01-15'
+                ? 7.5
+                : date < '2026-01-29'
+                  ? 8.5
+                  : 5,
+        },
+      };
+    });
+  const shifted = evaluateSleepBaselineTrend(facts, baselineWindow);
+  expect(shifted.baseline?.medianHours).toBe(8);
+  expect(shifted.baseline?.madHours).toBe(0.5);
+  expect(shifted.baseline?.iqrHours).toBe(1);
+  expect(shifted.trend).toMatchObject({
+    currentMedianHours: 5,
+    absoluteDeltaHours: -3,
+    direction: 'decreasing',
+  });
+  const moreShifted = evaluateSleepBaselineTrend(
+    facts.map((fact) =>
+      (fact.effective as { value: string }).value >= '2026-01-29'
+        ? {
+            ...fact,
+            value: { kind: 'quantity', canonicalUnit: 'h', canonicalValue: 2 },
+          }
+        : fact,
+    ),
+    baselineWindow,
+  );
+  expect(moreShifted.baseline).toEqual(shifted.baseline);
+  const stable = evaluateSleepBaselineTrend(
+    facts.map((fact) => ({
+      ...fact,
+      value: { kind: 'quantity', canonicalUnit: 'h', canonicalValue: 7.5 },
+    })),
+    baselineWindow,
+  );
+  expect(stable.trend).toMatchObject({
+    absoluteDeltaHours: 0,
+    direction: 'stable',
+  });
+});
+
+test('sparse reference/current and source switch return no fabricated baseline or trend', () => {
+  const facts = sleepFacts();
+  const sparse = facts.filter((fact) => {
+    const date = (fact.effective as { value: string }).value;
+    return date >= '2026-01-10';
+  });
+  const reference = evaluateSleepBaselineTrend(sparse, baselineWindow);
+  expect(reference.status).toBe('insufficient');
+  expect(reference.reasons).toContain('insufficient_reference');
+  expect(reference.baseline).toBeNull();
+  expect(reference.trend).toBeNull();
+
+  const missingWeek = evaluateSleepBaselineTrend(facts, {
+    ...baselineWindow,
+    startDate: '2026-02-15',
+    endDateExclusive: '2026-02-22',
+    asOfDate: '2026-02-22',
+  });
+  expect(missingWeek.reasons).toContain('insufficient_current');
+  expect(missingWeek.trend).toBeNull();
+
+  const switched = evaluateSleepBaselineTrend(facts, {
+    ...baselineWindow,
+    startDate: '2026-03-09',
+    endDateExclusive: '2026-03-16',
+    asOfDate: '2026-03-16',
+  });
+  expect(switched.reasons).toContain('source_continuity_unproven');
+  expect(switched.trend).toBeNull();
+});
+
+test('overlapping day and unsupported current period cannot produce a trend', () => {
+  const facts = sleepFacts().filter(
+    (fact) => (fact.effective as { value: string }).value < '2026-02-05',
+  );
+  const overlapping = evaluateSleepBaselineTrend(
+    [...facts, { ...facts[0]!, id: 'overlap' }],
+    baselineWindow,
+  );
+  expect(overlapping.reasons).toContain('overlapping_day');
+  expect(overlapping.trend).toBeNull();
+  expect(() =>
+    evaluateSleepBaselineTrend(facts, {
+      ...baselineWindow,
+      endDateExclusive: '2026-02-06',
+      asOfDate: '2026-02-06',
+    }),
+  ).toThrow('exactly 7 local dates');
 });

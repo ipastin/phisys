@@ -21,11 +21,16 @@ export type MetricDefinition = {
     sufficientCoverage: number;
     maximumFreshnessDays: number;
   };
+  baselineParameters: {
+    referenceDays: number;
+    currentDays: number;
+    minimumReferenceDays: number;
+  };
 };
 
 export const sleepDuration: MetricDefinition = {
   id: 'sleep_duration',
-  version: '1.0.0',
+  version: '1.1.0',
   conceptId: 'sleep_duration',
   measurementClass: 'device_derived',
   temporalClass: 'daily',
@@ -39,6 +44,11 @@ export const sleepDuration: MetricDefinition = {
     limitedCoverage: 0.5,
     sufficientCoverage: 0.8,
     maximumFreshnessDays: 7,
+  },
+  baselineParameters: {
+    referenceDays: 28,
+    currentDays: 7,
+    minimumReferenceDays: 21,
   },
 };
 export const metricRegistry = { sleep_duration: sleepDuration } as const;
@@ -290,6 +300,180 @@ export async function sleepQuality(
       pool,
       personId,
       window.startDate,
+      window.endDateExclusive,
+    ),
+    window,
+  );
+}
+
+export type SleepBaselineTrendResult = {
+  metricId: 'sleep_duration';
+  metricDefinitionVersion: string;
+  algorithmVersion: 'sleep-baseline-trend-v1';
+  parameters: MetricDefinition['baselineParameters'];
+  window: QualityWindow;
+  status: 'sufficient' | 'limited' | 'insufficient';
+  reasons: string[];
+  quality: {
+    reference: QualityResult;
+    current: QualityResult;
+    combined: QualityResult;
+  };
+  baseline: null | {
+    window: { startDate: string; endDateExclusive: string };
+    sampleDays: number;
+    medianHours: number;
+    madHours: number;
+    iqrHours: number;
+  };
+  trend: null | {
+    method: 'current_median_vs_reference_median';
+    currentMedianHours: number;
+    absoluteDeltaHours: number;
+    relativeDelta: number | null;
+    direction: 'increasing' | 'decreasing' | 'stable';
+  };
+  calculatedAt: string;
+};
+
+function median(sorted: number[]): number {
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[middle]!
+    : (sorted[middle - 1]! + sorted[middle]!) / 2;
+}
+
+function dispersion(sorted: number[]): { mad: number; iqr: number } {
+  const center = median(sorted);
+  const deviations = sorted
+    .map((value) => Math.abs(value - center))
+    .sort((a, b) => a - b);
+  const half = Math.floor(sorted.length / 2);
+  return {
+    mad: median(deviations),
+    iqr:
+      median(sorted.slice(sorted.length - half)) -
+      median(sorted.slice(0, half)),
+  };
+}
+
+export function evaluateSleepBaselineTrend(
+  facts: SleepFactRow[],
+  window: QualityWindow,
+): SleepBaselineTrendResult {
+  const { start, end } = checkedWindow(window);
+  const parameters = sleepDuration.baselineParameters;
+  if ((end - start) / dayMs !== parameters.currentDays)
+    throw new Error('Current window must be exactly 7 local dates');
+  const referenceStart = new Date(start - parameters.referenceDays * dayMs)
+    .toISOString()
+    .slice(0, 10);
+  const referenceWindow = {
+    ...window,
+    startDate: referenceStart,
+    endDateExclusive: window.startDate,
+    asOfDate: window.startDate,
+  };
+  const combinedWindow = { ...window, startDate: referenceStart };
+  const referenceFacts = facts.filter((fact) => {
+    const date = (fact.effective as { value?: unknown } | null)?.value;
+    return (
+      typeof date === 'string' &&
+      date >= referenceStart &&
+      date < window.startDate
+    );
+  });
+  const currentFacts = facts.filter((fact) => {
+    const date = (fact.effective as { value?: unknown } | null)?.value;
+    return (
+      typeof date === 'string' &&
+      date >= window.startDate &&
+      date < window.endDateExclusive
+    );
+  });
+  const quality = {
+    reference: evaluateSleepQuality(referenceFacts, referenceWindow),
+    current: evaluateSleepQuality(currentFacts, window),
+    combined: evaluateSleepQuality(facts, combinedWindow),
+  };
+  const reasons: string[] = [];
+  if (
+    quality.reference.coverage.observedDays < parameters.minimumReferenceDays ||
+    quality.reference.status === 'insufficient'
+  )
+    reasons.push('insufficient_reference');
+  if (quality.current.status === 'insufficient')
+    reasons.push('insufficient_current');
+  if (
+    quality.combined.sourceContinuity.status !== 'continuous' ||
+    quality.combined.sourceContinuity.connectorIds.length !== 1
+  )
+    reasons.push('source_continuity_unproven');
+  if (quality.combined.sameDayExtraFactCount) reasons.push('overlapping_day');
+  if (quality.combined.excludedFactIds.length) reasons.push('excluded_inputs');
+  const base = {
+    metricId: sleepDuration.id,
+    metricDefinitionVersion: sleepDuration.version,
+    algorithmVersion: 'sleep-baseline-trend-v1' as const,
+    parameters,
+    window,
+    reasons,
+    quality,
+    calculatedAt: window.calculatedAt,
+  };
+  if (reasons.length)
+    return { ...base, status: 'insufficient', baseline: null, trend: null };
+
+  const values = (rows: SleepFactRow[]) =>
+    rows
+      .map((fact) => (fact.value as { canonicalValue: number }).canonicalValue)
+      .sort((a, b) => a - b);
+  const reference = values(referenceFacts);
+  const current = values(currentFacts);
+  const center = median(reference);
+  const currentCenter = median(current);
+  const delta = currentCenter - center;
+  const { mad, iqr } = dispersion(reference);
+  return {
+    ...base,
+    status: Object.values(quality).some((item) => item.status === 'limited')
+      ? 'limited'
+      : 'sufficient',
+    baseline: {
+      window: { startDate: referenceStart, endDateExclusive: window.startDate },
+      sampleDays: quality.reference.coverage.observedDays,
+      medianHours: center,
+      madHours: mad,
+      iqrHours: iqr,
+    },
+    trend: {
+      method: 'current_median_vs_reference_median',
+      currentMedianHours: currentCenter,
+      absoluteDeltaHours: delta,
+      relativeDelta: center === 0 ? null : delta / center,
+      direction: delta > 0 ? 'increasing' : delta < 0 ? 'decreasing' : 'stable',
+    },
+  };
+}
+
+export async function sleepBaselineTrend(
+  pool: Pool,
+  personId: string,
+  window: QualityWindow,
+): Promise<SleepBaselineTrendResult> {
+  const { start, end } = checkedWindow(window);
+  if ((end - start) / dayMs !== sleepDuration.baselineParameters.currentDays)
+    throw new Error('Current window must be exactly 7 local dates');
+  const referenceStart = new Date(
+    start - sleepDuration.baselineParameters.referenceDays * dayMs,
+  )
+    .toISOString()
+    .slice(0, 10);
+  return evaluateSleepBaselineTrend(
+    await readCurrentSleepFacts(
+      pool,
+      personId,
+      referenceStart,
       window.endDateExclusive,
     ),
     window,

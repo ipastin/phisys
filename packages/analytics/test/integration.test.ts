@@ -2,7 +2,11 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { Pool, readCurrentSleepFacts, uuidv7 } from '@myphisys/database';
 import { ingest } from '@myphisys/ingestion';
 import { goldenRecords } from '../../ingestion/test/golden.js';
-import { sleepQuality, type QualityWindow } from '../src/index.js';
+import {
+  sleepBaselineTrend,
+  sleepQuality,
+  type QualityWindow,
+} from '../src/index.js';
 
 if (!process.env.DATABASE_URL || process.env.M1_DISPOSABLE_DB !== '1')
   throw new Error(
@@ -20,6 +24,7 @@ const writer = new Pool({ connectionString: writerUrl.toString() });
 const reader = new Pool({ connectionString: readerUrl.toString() });
 const personA = uuidv7();
 const personB = uuidv7();
+const personC = uuidv7();
 const window: QualityWindow = {
   startDate: '2026-01-01',
   endDateExclusive: '2026-04-01',
@@ -33,9 +38,10 @@ beforeAll(async () => {
   );
   await admin.query('GRANT myphisys_domain TO myphisys_m2_writer');
   await admin.query('GRANT myphisys_analytics TO myphisys_m2_reader');
-  await admin.query('INSERT INTO identity.person(id) VALUES ($1),($2)', [
+  await admin.query('INSERT INTO identity.person(id) VALUES ($1),($2),($3)', [
     personA,
     personB,
+    personC,
   ]);
   for (const record of goldenRecords(personA).filter(
     (item) => item.payload.conceptId === 'sleep_duration',
@@ -51,6 +57,35 @@ beforeAll(async () => {
       })
     ).state,
   ).toBe('imported');
+  for (const record of goldenRecords(personC).filter(
+    (item) =>
+      item.payload.conceptId === 'sleep_duration' &&
+      (item.payload.effective as { value: string }).value < '2026-02-05',
+  )) {
+    const date = (record.payload.effective as { value: string }).value;
+    expect(
+      (
+        await ingest(writer, {
+          ...record,
+          payload: {
+            ...record.payload,
+            value: {
+              kind: 'quantity',
+              originalUnit: 'h',
+              originalValue:
+                date === '2026-01-01'
+                  ? 1
+                  : date < '2026-01-15'
+                    ? 7.5
+                    : date < '2026-01-29'
+                      ? 8.5
+                      : 5,
+            },
+          },
+        })
+      ).state,
+    ).toBe('imported');
+  }
 }, 120_000);
 
 afterAll(async () => {
@@ -144,4 +179,60 @@ test('analytics role isolates persons and has no Raw or Canonical write privileg
     await raw.query('ROLLBACK');
     raw.release();
   }
+});
+
+test('DB baseline resists a current shift and reference outlier', async () => {
+  const result = await sleepBaselineTrend(reader, personC, {
+    startDate: '2026-01-29',
+    endDateExclusive: '2026-02-05',
+    asOfDate: '2026-02-05',
+    calculatedAt: '2026-02-05T00:00:00Z',
+  });
+  expect(result.status).toBe('limited');
+  expect(result.baseline).toMatchObject({
+    sampleDays: 28,
+    medianHours: 8,
+    madHours: 0.5,
+    iqrHours: 1,
+  });
+  expect(result.trend).toMatchObject({
+    currentMedianHours: 5,
+    absoluteDeltaHours: -3,
+    direction: 'decreasing',
+  });
+  expect(await sleepBaselineTrend(reader, personC, result.window)).toEqual(
+    result,
+  );
+});
+
+test('DB sparse series and M1 source switch suppress baseline/trend', async () => {
+  const sparseWindow: QualityWindow = {
+    startDate: '2026-02-15',
+    endDateExclusive: '2026-02-22',
+    asOfDate: '2026-02-22',
+    calculatedAt: '2026-02-22T00:00:00Z',
+  };
+  const missing = await sleepBaselineTrend(reader, personA, sparseWindow);
+  expect(missing.status).toBe('insufficient');
+  expect(missing.reasons).toContain('insufficient_current');
+  expect(missing.baseline).toBeNull();
+  expect(missing.trend).toBeNull();
+
+  const sparse = await sleepBaselineTrend(reader, personB, {
+    ...sparseWindow,
+    startDate: '2026-01-29',
+    endDateExclusive: '2026-02-05',
+    asOfDate: '2026-02-05',
+  });
+  expect(sparse.reasons).toContain('insufficient_reference');
+  expect(sparse.trend).toBeNull();
+
+  const switched = await sleepBaselineTrend(reader, personA, {
+    ...sparseWindow,
+    startDate: '2026-03-09',
+    endDateExclusive: '2026-03-16',
+    asOfDate: '2026-03-16',
+  });
+  expect(switched.reasons).toContain('source_continuity_unproven');
+  expect(switched.trend).toBeNull();
 });
