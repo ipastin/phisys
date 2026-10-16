@@ -88,6 +88,7 @@ export type QualityResult = {
   };
   provenance: {
     factIds: string[];
+    factSupports: { factId: string; supports: SleepFactRow['supports'] }[];
     rawRecordIds: string[];
     sourceIds: string[];
     supports: {
@@ -144,6 +145,7 @@ export function evaluateSleepQuality(
   >();
   const excludedFactIds: string[] = [];
   const factIds = new Set<string>();
+  const factSupports: QualityResult['provenance']['factSupports'] = [];
   const rawRecordIds = new Set<string>();
   const sourceIds = new Set<string>();
   const connectors = new Set<string>();
@@ -180,6 +182,12 @@ export function evaluateSleepQuality(
     )
       continue;
     factIds.add(fact.id);
+    factSupports.push({
+      factId: fact.id,
+      supports: fact.supports
+        .map((support) => ({ ...support }))
+        .sort((a, b) => a.rawId.localeCompare(b.rawId)),
+    });
     for (const support of fact.supports) {
       rawRecordIds.add(support.rawId);
       sourceIds.add(support.sourceId);
@@ -297,6 +305,7 @@ export function evaluateSleepQuality(
     },
     provenance: {
       factIds: [...factIds].sort(),
+      factSupports,
       rawRecordIds: [...rawRecordIds].sort(),
       sourceIds: [...sourceIds].sort(),
       supports: [...supports.values()].sort((a, b) =>
