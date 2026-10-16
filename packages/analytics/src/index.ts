@@ -14,6 +14,7 @@ export type MetricDefinition = {
   readonly aggregationPolicy: 'unique_local_dates';
   readonly baselinePolicy: 'lagged_rolling_median';
   readonly trendPolicy: 'descriptive';
+  readonly comparisonPolicy: 'adjacent_complete_local_weeks';
   readonly interpretationPolicy: 'none';
   readonly qualityPolicy: {
     readonly minimumDays: number;
@@ -28,11 +29,15 @@ export type MetricDefinition = {
     readonly currentDays: number;
     readonly minimumReferenceDays: number;
   };
+  readonly comparisonParameters: {
+    readonly previousDays: 7;
+    readonly currentDays: 7;
+  };
 };
 
 export const sleepDuration: MetricDefinition = Object.freeze({
   id: 'sleep_duration',
-  version: '1.1.0',
+  version: '1.2.0',
   conceptId: 'sleep_duration',
   measurementClass: 'device_derived',
   temporalClass: 'daily',
@@ -40,6 +45,7 @@ export const sleepDuration: MetricDefinition = Object.freeze({
   aggregationPolicy: 'unique_local_dates',
   baselinePolicy: 'lagged_rolling_median',
   trendPolicy: 'descriptive',
+  comparisonPolicy: 'adjacent_complete_local_weeks',
   interpretationPolicy: 'none',
   qualityPolicy: Object.freeze({
     minimumDays: 7,
@@ -55,6 +61,7 @@ export const sleepDuration: MetricDefinition = Object.freeze({
     currentDays: 7,
     minimumReferenceDays: 21,
   }),
+  comparisonParameters: Object.freeze({ previousDays: 7, currentDays: 7 }),
 });
 export const metricRegistry = Object.freeze({ sleep_duration: sleepDuration });
 
@@ -504,6 +511,151 @@ export async function sleepBaselineTrend(
       pool,
       personId,
       referenceStart,
+      window.endDateExclusive,
+    ),
+    window,
+  );
+}
+
+export type SleepPeriodComparisonResult = {
+  metricId: 'sleep_duration';
+  metricDefinitionVersion: string;
+  algorithmVersion: 'sleep-period-comparison-v1';
+  policy: MetricDefinition['comparisonPolicy'];
+  parameters: MetricDefinition['comparisonParameters'];
+  window: QualityWindow;
+  status: 'sufficient' | 'limited' | 'insufficient';
+  reasons: string[];
+  quality: {
+    previous: QualityResult;
+    current: QualityResult;
+    combined: QualityResult;
+  };
+  comparison: null | {
+    method: 'adjacent_week_medians';
+    previousMedianHours: number;
+    currentMedianHours: number;
+    absoluteDeltaHours: number;
+    relativeDelta: number | null;
+    direction: 'increasing' | 'decreasing' | 'stable';
+  };
+  calculatedAt: string;
+};
+
+export function evaluateSleepPeriodComparison(
+  facts: SleepFactRow[],
+  window: QualityWindow,
+): SleepPeriodComparisonResult {
+  const { start, end } = checkedWindow(window);
+  const parameters = Object.freeze({ ...sleepDuration.comparisonParameters });
+  if ((end - start) / dayMs !== parameters.currentDays)
+    throw new Error('Current window must be exactly 7 local dates');
+  const previousStart = new Date(start - parameters.previousDays * dayMs)
+    .toISOString()
+    .slice(0, 10);
+  const previousWindow = {
+    ...window,
+    startDate: previousStart,
+    endDateExclusive: window.startDate,
+    asOfDate: window.startDate,
+  };
+  const combinedWindow = { ...window, startDate: previousStart };
+  const previousFacts = facts.filter((fact) => {
+    const date = (fact.effective as { value?: unknown } | null)?.value;
+    return (
+      typeof date === 'string' &&
+      date >= previousStart &&
+      date < window.startDate
+    );
+  });
+  const currentFacts = facts.filter((fact) => {
+    const date = (fact.effective as { value?: unknown } | null)?.value;
+    return (
+      typeof date === 'string' &&
+      date >= window.startDate &&
+      date < window.endDateExclusive
+    );
+  });
+  const quality = {
+    previous: evaluateSleepQuality(previousFacts, previousWindow),
+    current: evaluateSleepQuality(currentFacts, window),
+    combined: evaluateSleepQuality(facts, combinedWindow),
+  };
+  const blockers: string[] = [];
+  if (quality.previous.status === 'insufficient')
+    blockers.push('insufficient_previous');
+  if (quality.current.status === 'insufficient')
+    blockers.push('insufficient_current');
+  if (
+    quality.combined.sourceContinuity.status !== 'continuous' ||
+    quality.combined.sourceContinuity.connectorIds.length !== 1
+  )
+    blockers.push('source_continuity_unproven');
+  if (quality.combined.sameDayExtraFactCount) blockers.push('overlapping_day');
+  if (quality.combined.excludedFactIds.length) blockers.push('excluded_inputs');
+  const limitations = (['previous', 'current', 'combined'] as const).flatMap(
+    (period) => quality[period].reasons.map((reason) => `${period}_${reason}`),
+  );
+  const base = {
+    metricId: sleepDuration.id,
+    metricDefinitionVersion: sleepDuration.version,
+    algorithmVersion: 'sleep-period-comparison-v1' as const,
+    policy: sleepDuration.comparisonPolicy,
+    parameters,
+    window: { ...window },
+    reasons: [...blockers, ...limitations],
+    quality,
+    calculatedAt: window.calculatedAt,
+  };
+  if (blockers.length)
+    return { ...base, status: 'insufficient', comparison: null };
+  const values = (rows: SleepFactRow[]) =>
+    rows
+      .map((fact) => (fact.value as { canonicalValue: number }).canonicalValue)
+      .sort((a, b) => a - b);
+  const previousMedianHours = median(values(previousFacts));
+  const currentMedianHours = median(values(currentFacts));
+  const absoluteDeltaHours = currentMedianHours - previousMedianHours;
+  return {
+    ...base,
+    status: limitations.length ? 'limited' : 'sufficient',
+    comparison: {
+      method: 'adjacent_week_medians',
+      previousMedianHours,
+      currentMedianHours,
+      absoluteDeltaHours,
+      relativeDelta:
+        previousMedianHours === 0
+          ? null
+          : absoluteDeltaHours / previousMedianHours,
+      direction:
+        absoluteDeltaHours > 0
+          ? 'increasing'
+          : absoluteDeltaHours < 0
+            ? 'decreasing'
+            : 'stable',
+    },
+  };
+}
+
+export async function sleepPeriodComparison(
+  pool: Pool,
+  personId: string,
+  window: QualityWindow,
+): Promise<SleepPeriodComparisonResult> {
+  const { start, end } = checkedWindow(window);
+  if ((end - start) / dayMs !== sleepDuration.comparisonParameters.currentDays)
+    throw new Error('Current window must be exactly 7 local dates');
+  const previousStart = new Date(
+    start - sleepDuration.comparisonParameters.previousDays * dayMs,
+  )
+    .toISOString()
+    .slice(0, 10);
+  return evaluateSleepPeriodComparison(
+    await readCurrentSleepFacts(
+      pool,
+      personId,
+      previousStart,
       window.endDateExclusive,
     ),
     window,

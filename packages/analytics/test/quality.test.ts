@@ -3,6 +3,7 @@ import type { SleepFactRow } from '@myphisys/database';
 import { goldenRecords } from '../../ingestion/test/golden.js';
 import {
   evaluateSleepBaselineTrend,
+  evaluateSleepPeriodComparison,
   evaluateSleepQuality,
   metricRegistry,
   sleepDuration,
@@ -46,7 +47,7 @@ function sleepFacts(): SleepFactRow[] {
 test('versioned sleep profile and M1 golden quality preserve missing week and source handoff', () => {
   expect(sleepDuration).toMatchObject({
     id: 'sleep_duration',
-    version: '1.1.0',
+    version: '1.2.0',
     canonicalUnit: 'h',
     temporalClass: 'daily',
     qualityPolicy: { minimumDurationHours: 0, maximumDurationHours: 25 },
@@ -86,6 +87,302 @@ test('versioned sleep profile and M1 golden quality preserve missing week and so
     version: 1,
     transformation: 'm1-map-v1',
   });
+});
+
+const periodWindow: QualityWindow = {
+  startDate: '2026-01-08',
+  endDateExclusive: '2026-01-15',
+  asOfDate: '2026-01-15',
+  calculatedAt: '2026-01-15T00:00:00Z',
+};
+
+function completeWeeks(previous = 8, current = 8): SleepFactRow[] {
+  return sleepFacts()
+    .filter((fact) => {
+      const date = (fact.effective as { value: string }).value;
+      return date >= '2026-01-01' && date < '2026-01-15';
+    })
+    .map((fact) => ({
+      ...fact,
+      verification: 'verified',
+      value: {
+        kind: 'quantity',
+        canonicalUnit: 'h',
+        canonicalValue:
+          (fact.effective as { value: string }).value < '2026-01-08'
+            ? previous
+            : current,
+      },
+    }));
+}
+
+test('complete adjacent weeks compare medians without changing lagged baseline semantics', () => {
+  const stable = evaluateSleepPeriodComparison(completeWeeks(), periodWindow);
+  expect(sleepDuration.comparisonPolicy).toBe('adjacent_complete_local_weeks');
+  expect(sleepDuration.comparisonParameters).toEqual({
+    previousDays: 7,
+    currentDays: 7,
+  });
+  expect(Object.isFrozen(sleepDuration.comparisonParameters)).toBe(true);
+  expect(stable.status).toBe('sufficient');
+  expect(stable.comparison).toMatchObject({
+    previousMedianHours: 8,
+    currentMedianHours: 8,
+    absoluteDeltaHours: 0,
+    relativeDelta: 0,
+    direction: 'stable',
+  });
+  const shifted = evaluateSleepPeriodComparison(
+    completeWeeks(8, 6),
+    periodWindow,
+  );
+  expect(shifted.comparison).toMatchObject({
+    previousMedianHours: 8,
+    currentMedianHours: 6,
+    absoluteDeltaHours: -2,
+    relativeDelta: -0.25,
+    direction: 'decreasing',
+  });
+  expect(shifted.quality.combined.coverage).toMatchObject({
+    observedDays: 14,
+    expectedDays: 14,
+  });
+  expect(shifted.quality.combined.duplicateReceiptCount).toBe('unavailable');
+  expect(
+    evaluateSleepPeriodComparison(
+      [...completeWeeks(8, 6)].reverse(),
+      periodWindow,
+    ),
+  ).toEqual(shifted);
+  const zero = evaluateSleepPeriodComparison(completeWeeks(0, 2), periodWindow);
+  expect(zero.comparison).toMatchObject({
+    previousMedianHours: 0,
+    absoluteDeltaHours: 2,
+    relativeDelta: null,
+    direction: 'increasing',
+  });
+});
+
+test('one missing date, a missing week and sparse observations suppress comparison', () => {
+  const facts = completeWeeks();
+  for (const date of ['2026-01-04', '2026-01-11']) {
+    const result = evaluateSleepPeriodComparison(
+      facts.filter(
+        (fact) => (fact.effective as { value: string }).value !== date,
+      ),
+      periodWindow,
+    );
+    expect(result.status).toBe('insufficient');
+    expect(result.comparison).toBeNull();
+    expect(result.reasons).toContain(
+      date < '2026-01-08' ? 'insufficient_previous' : 'insufficient_current',
+    );
+    expect(result.quality.combined.missingDates).toContain(date);
+  }
+  for (const subset of [facts.slice(0, 7), facts.slice(0, 2)]) {
+    const result = evaluateSleepPeriodComparison(subset, periodWindow);
+    expect(result.status).toBe('insufficient');
+    expect(result.comparison).toBeNull();
+  }
+});
+
+test('one valid outlier does not invent a shift, while a midweek connector switch blocks it', () => {
+  const facts = completeWeeks();
+  const noisy = facts.map((fact, index) =>
+    index === 10
+      ? {
+          ...fact,
+          value: { kind: 'quantity', canonicalUnit: 'h', canonicalValue: 25 },
+        }
+      : fact,
+  );
+  const noiseResult = evaluateSleepPeriodComparison(noisy, periodWindow);
+  expect(noiseResult.status).toBe('sufficient');
+  expect(noiseResult.comparison).toMatchObject({
+    previousMedianHours: 8,
+    currentMedianHours: 8,
+    absoluteDeltaHours: 0,
+    direction: 'stable',
+  });
+
+  const switched = facts.map((fact, index) =>
+    index === 10
+      ? { ...fact, supports: [{ ...fact.supports[0]!, connectorId: 'other' }] }
+      : fact,
+  );
+  const switchResult = evaluateSleepPeriodComparison(switched, periodWindow);
+  expect(switchResult.quality.current.sourceContinuity.status).toBe(
+    'transition',
+  );
+  expect(switchResult.reasons).toContain('source_continuity_unproven');
+  expect(switchResult.comparison).toBeNull();
+});
+
+test('source switch, overlap, invalid point, conflict and missing Raw support block numbers', () => {
+  const facts = completeWeeks();
+  const variants: SleepFactRow[][] = [
+    facts.map((fact, index) =>
+      index < 7
+        ? fact
+        : {
+            ...fact,
+            supports: [{ ...fact.supports[0]!, connectorId: 'other' }],
+          },
+    ),
+    [
+      ...facts,
+      {
+        ...facts[0]!,
+        id: 'overlap',
+        supports: [{ ...facts[0]!.supports[0]!, rawId: 'raw:overlap' }],
+      },
+    ],
+    facts.map((fact, index) =>
+      index === 0
+        ? {
+            ...fact,
+            value: { kind: 'quantity', canonicalUnit: 'h', canonicalValue: 26 },
+          }
+        : fact,
+    ),
+    facts.map((fact, index) =>
+      index === 0 ? { ...fact, has_unresolved_conflict: true } : fact,
+    ),
+    facts.map((fact, index) =>
+      index === 0 ? { ...fact, supports: [] } : fact,
+    ),
+    facts.map((fact, index) =>
+      index === 0
+        ? {
+            ...fact,
+            supports: [
+              fact.supports[0]!,
+              {
+                ...fact.supports[0]!,
+                rawId: 'raw:second',
+                connectorId: 'other',
+              },
+            ],
+          }
+        : fact,
+    ),
+    [
+      ...facts,
+      {
+        ...facts[0]!,
+        id: 'malformed',
+        effective: { kind: 'local_date', value: '2026-01-40' },
+      },
+    ],
+  ];
+  for (const input of variants) {
+    const result = evaluateSleepPeriodComparison(input, periodWindow);
+    expect(result.status).toBe('insufficient');
+    expect(result.comparison).toBeNull();
+  }
+  expect(
+    evaluateSleepPeriodComparison(variants[0]!, periodWindow).reasons,
+  ).toContain('source_continuity_unproven');
+  expect(
+    evaluateSleepPeriodComparison(variants[1]!, periodWindow).reasons,
+  ).toContain('overlapping_day');
+  expect(
+    evaluateSleepPeriodComparison(variants[2]!, periodWindow).quality.combined
+      .reasons,
+  ).toContain('invalid_point');
+  expect(
+    evaluateSleepPeriodComparison(variants[5]!, periodWindow).quality.combined
+      .sourceContinuity.status,
+  ).toBe('ambiguous');
+});
+
+test('period provenance follows each active Raw support, independent of row order', () => {
+  const facts = completeWeeks(8, 7);
+  const first = evaluateSleepPeriodComparison(facts, periodWindow);
+  const swapped = evaluateSleepPeriodComparison(
+    [
+      { ...facts[0]!, supports: facts[1]!.supports },
+      { ...facts[1]!, supports: facts[0]!.supports },
+      ...facts.slice(2),
+    ],
+    periodWindow,
+  );
+  expect(swapped.comparison).toEqual(first.comparison);
+  expect(swapped.quality.combined.provenance.factSupports).not.toEqual(
+    first.quality.combined.provenance.factSupports,
+  );
+  expect(swapped.quality.combined.provenance.rawRecordIds).toEqual(
+    first.quality.combined.provenance.rawRecordIds,
+  );
+});
+
+test('out-of-window dates do not suppress; unverified and stale weeks stay qualified', () => {
+  const facts = completeWeeks(8, 7);
+  const outside = [
+    {
+      ...facts[0]!,
+      id: 'before',
+      effective: { kind: 'local_date', value: '2025-12-31' },
+      value: { kind: 'quantity', canonicalUnit: 'h', canonicalValue: 26 },
+    },
+    {
+      ...facts[0]!,
+      id: 'after',
+      effective: { kind: 'local_date', value: '2026-01-15' },
+    },
+  ];
+  expect(
+    evaluateSleepPeriodComparison([...outside, ...facts], periodWindow),
+  ).toEqual(evaluateSleepPeriodComparison(facts, periodWindow));
+  const limited = evaluateSleepPeriodComparison(
+    facts.map((fact) => ({ ...fact, verification: 'unverified' })),
+    { ...periodWindow, asOfDate: '2026-02-15' },
+  );
+  expect(limited.status).toBe('limited');
+  expect(limited.comparison?.absoluteDeltaHours).toBe(-1);
+  expect(limited.reasons).toContain('previous_unverified_inputs');
+  expect(limited.reasons).toContain('current_stale');
+  expect(limited.reasons).toContain('combined_stale');
+  expect(() =>
+    evaluateSleepPeriodComparison(facts, {
+      ...periodWindow,
+      startDate: '2026-01-09',
+    }),
+  ).toThrow('exactly 7');
+  expect(() =>
+    evaluateSleepPeriodComparison(facts, {
+      ...periodWindow,
+      startDate: '2026-02-30',
+    }),
+  ).toThrow();
+});
+
+test('seven local dates remain seven across leap day and DST', () => {
+  const template = completeWeeks()[0]!;
+  for (const startDate of ['2024-03-03', '2024-03-10', '2024-10-27']) {
+    const start = Date.parse(`${startDate}T00:00:00Z`);
+    const dates = Array.from({ length: 14 }, (_, index) =>
+      new Date(start + (index - 7) * 86_400_000).toISOString().slice(0, 10),
+    );
+    const endDateExclusive = new Date(start + 7 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const facts = dates.map((date) => ({
+      ...template,
+      id: date,
+      effective: { kind: 'local_date', value: date },
+      supports: [{ ...template.supports[0]!, rawId: `raw:${date}` }],
+    }));
+    const result = evaluateSleepPeriodComparison(facts, {
+      startDate,
+      endDateExclusive,
+      asOfDate: endDateExclusive,
+      calculatedAt: `${endDateExclusive}T00:00:00Z`,
+    });
+    expect(result.status).toBe('sufficient');
+    expect(result.quality.previous.coverage.expectedDays).toBe(7);
+    expect(result.quality.current.coverage.expectedDays).toBe(7);
+  }
 });
 
 test('per-fact Raw supports distinguish swapped lineage while aggregates stay stable', () => {
