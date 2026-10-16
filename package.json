@@ -16,7 +16,7 @@
     "test:unit": "turbo run test:unit",
     "test:architecture": "pnpm build && vitest run tests/architecture",
     "test": "pnpm test:unit && pnpm test:architecture",
-    "test:db": "vitest run packages/database/test/integration.test.ts && vitest run packages/ingestion/test/integration.test.ts && vitest run packages/connectors/test/integration.test.ts"
+    "test:db": "vitest run packages/database/test/integration.test.ts && vitest run packages/ingestion/test/integration.test.ts && vitest run packages/connectors/test/integration.test.ts && vitest run packages/analytics/test/integration.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

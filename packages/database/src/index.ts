@@ -3,6 +3,8 @@ import { Pool, type PoolClient } from 'pg';
 
 export { Pool };
 export type { PoolClient } from 'pg';
+export { readCurrentSleepFacts } from './analytics.js';
+export type { SleepFactRow } from './analytics.js';
 
 export function uuidv7(now = Date.now(), entropy = randomBytes(10)): string {
   if (
