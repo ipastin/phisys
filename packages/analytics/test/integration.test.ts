@@ -26,6 +26,7 @@ const reader = new Pool({ connectionString: readerUrl.toString() });
 const personA = uuidv7();
 const personB = uuidv7();
 const personC = uuidv7();
+const personD = uuidv7();
 const window: QualityWindow = {
   startDate: '2026-01-01',
   endDateExclusive: '2026-04-01',
@@ -39,11 +40,10 @@ beforeAll(async () => {
   );
   await admin.query('GRANT myphisys_domain TO myphisys_m2_writer');
   await admin.query('GRANT myphisys_analytics TO myphisys_m2_reader');
-  await admin.query('INSERT INTO identity.person(id) VALUES ($1),($2),($3)', [
-    personA,
-    personB,
-    personC,
-  ]);
+  await admin.query(
+    'INSERT INTO identity.person(id) VALUES ($1),($2),($3),($4)',
+    [personA, personB, personC, personD],
+  );
   for (const record of goldenRecords(personA).filter(
     (item) => item.payload.conceptId === 'sleep_duration',
   ))
@@ -87,6 +87,23 @@ beforeAll(async () => {
       ).state,
     ).toBe('imported');
   }
+  for (const record of goldenRecords(personD).filter(
+    (item) =>
+      item.payload.conceptId === 'sleep_duration' &&
+      (item.payload.effective as { value: string }).value < '2026-01-15',
+  ))
+    expect(
+      (
+        await ingest(writer, {
+          ...record,
+          eventKey: `step11:${(record.payload.effective as { value: string }).value}`,
+          payload: {
+            ...record.payload,
+            value: { kind: 'quantity', originalValue: 8, originalUnit: 'h' },
+          },
+        })
+      ).state,
+    ).toBe('imported');
 }, 120_000);
 
 afterAll(async () => {
@@ -154,6 +171,88 @@ test('DB missing week and connector boundary do not fabricate comparison', async
       calculatedAt: '2026-03-09T00:00:00Z',
     }),
   ).rejects.toThrow();
+});
+
+test('DB correction, support swap and tombstones recompute period provenance and availability', async () => {
+  const period: QualityWindow = {
+    startDate: '2026-01-08',
+    endDateExclusive: '2026-01-15',
+    asOfDate: '2026-01-15',
+    calculatedAt: '2026-01-15T00:00:00Z',
+  };
+  const original = goldenRecords(personD).find(
+    (item) =>
+      item.payload.conceptId === 'sleep_duration' &&
+      (item.payload.effective as { value: string }).value === '2026-01-01',
+  )!;
+  const base = {
+    ...original,
+    eventKey: 'step11:2026-01-01',
+    payload: {
+      ...original.payload,
+      value: { kind: 'quantity' as const, originalValue: 8, originalUnit: 'h' },
+    },
+  };
+  const before = await sleepPeriodComparison(reader, personD, period);
+  expect(before.comparison?.absoluteDeltaHours).toBe(0);
+  const support = { ...base, externalRecordId: 'step11-second-support' };
+  expect((await ingest(writer, support)).state).toBe('duplicate');
+  const withSupport = await sleepPeriodComparison(reader, personD, period);
+  expect(withSupport.comparison).toEqual(before.comparison);
+  expect(withSupport.quality.combined.provenance.rawRecordIds).toHaveLength(15);
+  expect(
+    (
+      await ingest(writer, {
+        ...base,
+        version: 2,
+        operation: 'delete',
+        payload: {},
+      })
+    ).state,
+  ).toBe('imported');
+  const afterSwap = await sleepPeriodComparison(reader, personD, period);
+  expect(afterSwap.comparison).toEqual(before.comparison);
+  expect(afterSwap.quality.combined.provenance.rawRecordIds).toHaveLength(14);
+  expect(afterSwap.quality.combined.provenance.rawRecordIds).not.toEqual(
+    before.quality.combined.provenance.rawRecordIds,
+  );
+  const current = goldenRecords(personD).find(
+    (item) =>
+      item.payload.conceptId === 'sleep_duration' &&
+      (item.payload.effective as { value: string }).value === '2026-01-10',
+  )!;
+  expect(
+    (
+      await ingest(writer, {
+        ...current,
+        eventKey: 'step11:2026-01-10',
+        version: 2,
+        payload: {
+          ...current.payload,
+          value: { kind: 'quantity', originalValue: 9, originalUnit: 'h' },
+        },
+      })
+    ).state,
+  ).toBe('imported');
+  const corrected = await sleepPeriodComparison(reader, personD, period);
+  expect(corrected.comparison).not.toBeNull();
+  expect(corrected.quality.combined.provenance.rawRecordIds).not.toEqual(
+    afterSwap.quality.combined.provenance.rawRecordIds,
+  );
+  expect(
+    (
+      await ingest(writer, {
+        ...support,
+        version: 2,
+        operation: 'delete',
+        payload: {},
+      })
+    ).state,
+  ).toBe('imported');
+  const removed = await sleepPeriodComparison(reader, personD, period);
+  expect(removed.status).toBe('insufficient');
+  expect(removed.comparison).toBeNull();
+  expect(removed.quality.previous.missingDates).toContain('2026-01-01');
 });
 
 test('person-scoped reader traces current facts to active Raw sources', async () => {
