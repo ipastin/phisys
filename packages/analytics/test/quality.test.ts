@@ -345,6 +345,21 @@ test('M1 golden gives lagged 28-day median, MAD/IQR and descriptive 7-day delta'
   ).toEqual(result);
 });
 
+test('mutating a baseline result window cannot change its input or repeated calculation', () => {
+  const facts = sleepFacts().filter(
+    (fact) => (fact.effective as { value: string }).value < '2026-02-05',
+  );
+  const inputWindow = { ...baselineWindow };
+  const original = evaluateSleepBaselineTrend(facts, { ...inputWindow });
+  const result = evaluateSleepBaselineTrend(facts, inputWindow);
+
+  result.window.startDate = '2026-01-30';
+
+  expect(inputWindow).toEqual(baselineWindow);
+  expect(result.quality.current.window.startDate).toBe('2026-01-29');
+  expect(evaluateSleepBaselineTrend(facts, inputWindow)).toEqual(original);
+});
+
 test('odd reference sample uses inclusive Tukey hinges for IQR', () => {
   const facts = sleepFacts()
     .filter((fact) => {

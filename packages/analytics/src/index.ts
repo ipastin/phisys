@@ -448,7 +448,7 @@ export function evaluateSleepBaselineTrend(
     metricDefinitionVersion: sleepDuration.version,
     algorithmVersion: 'sleep-baseline-trend-v1' as const,
     parameters,
-    window,
+    window: { ...window },
     reasons,
     quality,
     calculatedAt: window.calculatedAt,
