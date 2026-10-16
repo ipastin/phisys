@@ -4,6 +4,7 @@ import { ingest } from '@myphisys/ingestion';
 import { goldenRecords } from '../../ingestion/test/golden.js';
 import {
   sleepBaselineTrend,
+  sleepPeriodComparison,
   sleepQuality,
   type QualityWindow,
 } from '../src/index.js';
@@ -90,6 +91,69 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await Promise.all([reader.end(), writer.end(), admin.end()]);
+});
+
+test('DB adjacent weeks compare person-scoped medians and preserve Raw lineage', async () => {
+  const period: QualityWindow = {
+    startDate: '2026-01-08',
+    endDateExclusive: '2026-01-15',
+    asOfDate: '2026-01-15',
+    calculatedAt: '2026-01-15T00:00:00Z',
+  };
+  const a = await sleepPeriodComparison(reader, personA, period);
+  const b = await sleepPeriodComparison(reader, personB, period);
+  expect(a.status).toBe('limited');
+  expect(a.comparison).not.toBeNull();
+  expect(a.quality.previous.coverage.observedDays).toBe(7);
+  expect(a.quality.current.coverage.observedDays).toBe(7);
+  expect(a.quality.combined.provenance.factSupports).toHaveLength(14);
+  expect(a.quality.combined.duplicateReceiptCount).toBe('unavailable');
+  expect(b.status).toBe('insufficient');
+  expect(b.comparison).toBeNull();
+  expect(b.quality.combined.provenance.factIds).toHaveLength(1);
+  expect(
+    b.quality.combined.provenance.factIds.some((id) =>
+      a.quality.combined.provenance.factIds.includes(id),
+    ),
+  ).toBe(false);
+  expect(await sleepPeriodComparison(reader, personA, period)).toEqual(a);
+  const record = goldenRecords(personA).find(
+    (item) =>
+      item.payload.conceptId === 'sleep_duration' &&
+      (item.payload.effective as { value: string }).value === '2026-01-08',
+  )!;
+  expect((await ingest(writer, record)).state).toBe('duplicate');
+  expect(await sleepPeriodComparison(reader, personA, period)).toEqual(a);
+});
+
+test('DB missing week and connector boundary do not fabricate comparison', async () => {
+  const missing = await sleepPeriodComparison(reader, personA, {
+    startDate: '2026-02-22',
+    endDateExclusive: '2026-03-01',
+    asOfDate: '2026-03-01',
+    calculatedAt: '2026-03-01T00:00:00Z',
+  });
+  expect(missing.status).toBe('insufficient');
+  expect(missing.comparison).toBeNull();
+  expect(missing.quality.previous.missingDates).toHaveLength(7);
+  const switched = await sleepPeriodComparison(reader, personA, {
+    startDate: '2026-03-02',
+    endDateExclusive: '2026-03-09',
+    asOfDate: '2026-03-09',
+    calculatedAt: '2026-03-09T00:00:00Z',
+  });
+  expect(switched.quality.previous.coverage.observedDays).toBe(7);
+  expect(switched.quality.current.coverage.observedDays).toBe(7);
+  expect(switched.reasons).toContain('source_continuity_unproven');
+  expect(switched.comparison).toBeNull();
+  await expect(
+    sleepPeriodComparison(reader, personA, {
+      startDate: '2026-02-30',
+      endDateExclusive: '2026-03-09',
+      asOfDate: '2026-03-09',
+      calculatedAt: '2026-03-09T00:00:00Z',
+    }),
+  ).rejects.toThrow();
 });
 
 test('person-scoped reader traces current facts to active Raw sources', async () => {
