@@ -135,13 +135,13 @@ test('DB adjacent weeks compare person-scoped medians and preserve Raw lineage',
   expect(partialB.diff.status).toBe('unknown');
   expect(partialA.previous.identity.personId).toBe(personA);
   expect(partialB.previous.identity.personId).toBe(personB);
-  expect(partialA.diff.quality.combined.provenance.factIds).not.toEqual(
-    partialB.diff.quality.combined.provenance.factIds,
+  expect(partialA.diff.quality?.combined.provenance.factIds).not.toEqual(
+    partialB.diff.quality?.combined.provenance.factIds,
   );
   expect(partialA.previous.calculatedAt).toBe(partialA.current.calculatedAt);
   expect(partialA.current.calculatedAt).toBe(partialA.diff.calculatedAt);
   expect(partialA.diff.calculatedAt).toBe(
-    partialA.diff.quality.combined.calculatedAt,
+    partialA.diff.quality?.combined.calculatedAt,
   );
   expect(partialA.knowledgeAsOf).toBe('unavailable');
   expect(a.status).toBe('limited');

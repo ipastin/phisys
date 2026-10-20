@@ -113,7 +113,7 @@ test('A16 partial: missing date and source transition suppress numeric claims wi
   expect(blocked.diff.status).toBe('unknown');
   expect(blocked.diff.deltaHours).toBeNull();
   expect(blocked.diff.reasons).toContain('source_continuity_unproven');
-  expect(blocked.diff.quality.combined.sourceContinuity.status).toBe(
+  expect(blocked.diff.quality?.combined.sourceContinuity.status).toBe(
     'transition',
   );
   expect(blocked.diff).toMatchObject({
@@ -322,6 +322,33 @@ test('standalone diff rejects comparison from a different input or Quality revis
   ).toBe('incompatible');
 });
 
+test('standalone diff rejects mixed combined Quality and comparison provenance', () => {
+  const facts = weeks();
+  const withInvalid = (id: string) => [
+    ...facts,
+    { ...facts[0]!, id, effective: { kind: 'local_date', value: null } },
+  ];
+  const firstInputs = withInvalid('invalid-a');
+  const pair = evaluateSleepMetricStatePair(firstInputs, personId, window);
+  const coherent = diffSleepMetricStateSnapshots(
+    pair.previous,
+    pair.current,
+    evaluateSleepPeriodComparison(firstInputs, window),
+  );
+  expect(coherent.status).toBe('unknown');
+  expect(coherent.quality?.combined.provenance.factIds).toContain('invalid-a');
+
+  const mixed = diffSleepMetricStateSnapshots(
+    pair.previous,
+    pair.current,
+    evaluateSleepPeriodComparison(withInvalid('invalid-b'), window),
+  );
+  expect(mixed.status).toBe('incompatible');
+  expect(mixed.deltaHours).toBeNull();
+  expect(mixed.quality).toBeNull();
+  expect(mixed.reasons).toContain('incompatible_snapshot_identity');
+});
+
 test('T1 runtime captures once after read and refuses external time override', async () => {
   vi.useFakeTimers();
   try {
@@ -358,7 +385,7 @@ test('T1 runtime captures once after read and refuses external time override', a
       pair.diff.calculatedAt,
       pair.previous.quality.calculatedAt,
       pair.current.quality.calculatedAt,
-      pair.diff.quality.combined.calculatedAt,
+      pair.diff.quality?.combined.calculatedAt,
     ])
       expect(timestamp).toBe(pair.calculatedAt);
     expect(pair.knowledgeAsOf).toBe('unavailable');

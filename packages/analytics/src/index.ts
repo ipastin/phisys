@@ -519,35 +519,39 @@ export async function sleepBaselineTrend(
   );
 }
 
+function fingerprint(value: unknown): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify(value, (_, value: unknown) =>
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? Object.fromEntries(Object.entries(value).sort())
+          : value,
+      ),
+    )
+    .digest('hex');
+}
+
 function fingerprintSleepInputs(
   facts: SleepFactRow[],
   factIds: string[],
 ): string {
   const included = new Set(factIds);
-  return createHash('sha256')
-    .update(
-      JSON.stringify(
-        facts
-          .filter((fact) => included.has(fact.id))
-          .map((fact) => ({
-            id: fact.id,
-            value: fact.value,
-            effective: fact.effective,
-            verification: fact.verification,
-            epistemic: fact.epistemic,
-            has_unresolved_conflict: fact.has_unresolved_conflict,
-            supports: [...fact.supports].sort((a, b) =>
-              a.rawId.localeCompare(b.rawId),
-            ),
-          }))
-          .sort((a, b) => a.id.localeCompare(b.id)),
-        (_, value: unknown) =>
-          value && typeof value === 'object' && !Array.isArray(value)
-            ? Object.fromEntries(Object.entries(value).sort())
-            : value,
-      ),
-    )
-    .digest('hex');
+  return fingerprint(
+    facts
+      .filter((fact) => included.has(fact.id))
+      .map((fact) => ({
+        id: fact.id,
+        value: fact.value,
+        effective: fact.effective,
+        verification: fact.verification,
+        epistemic: fact.epistemic,
+        has_unresolved_conflict: fact.has_unresolved_conflict,
+        supports: [...fact.supports].sort((a, b) =>
+          a.rawId.localeCompare(b.rawId),
+        ),
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  );
 }
 
 export type SleepPeriodComparisonResult = {
@@ -564,7 +568,7 @@ export type SleepPeriodComparisonResult = {
     current: QualityResult;
     combined: QualityResult;
   };
-  inputFingerprints: { previous: string; current: string };
+  inputFingerprints: { previous: string; current: string; comparison: string };
   comparison: null | {
     method: 'adjacent_week_medians';
     previousMedianHours: number;
@@ -648,6 +652,10 @@ export function evaluateSleepPeriodComparison(
         currentFacts,
         quality.current.provenance.factIds,
       ),
+      comparison: fingerprintSleepInputs(
+        facts,
+        quality.combined.provenance.factIds,
+      ),
     },
     calculatedAt: window.calculatedAt,
   };
@@ -708,6 +716,15 @@ export async function sleepPeriodComparison(
 
 export type SleepMetricStateRequest = Omit<QualityWindow, 'calculatedAt'>;
 
+function fingerprintComparisonContext(
+  comparison: SleepPeriodComparisonResult,
+): string {
+  return fingerprint({
+    inputFingerprint: comparison.inputFingerprints?.comparison,
+    combinedQuality: comparison.quality.combined,
+  });
+}
+
 export type SleepMetricStateSnapshot = {
   kind: 'partial_sleep_metric_state';
   identity: {
@@ -718,6 +735,7 @@ export type SleepMetricStateSnapshot = {
     metricDefinitionVersion: string;
     inputFactIds: string[];
     inputFingerprint: string;
+    comparisonContextFingerprint: string;
     factSupports: QualityResult['provenance']['factSupports'];
   };
   observedAt: { factId: string; effective: unknown }[];
@@ -746,7 +764,7 @@ export type SleepMetricStateDiff = {
   status: 'numeric_changed' | 'unchanged' | 'unknown' | 'incompatible';
   deltaHours: number | null;
   qualityStatus: SleepPeriodComparisonResult['status'];
-  quality: SleepPeriodComparisonResult['quality'];
+  quality: SleepPeriodComparisonResult['quality'] | null;
   reasons: string[];
   previous: SleepMetricStateSnapshot['identity'];
   current: SleepMetricStateSnapshot['identity'];
@@ -780,6 +798,7 @@ function metricStateSnapshot(
   facts: SleepFactRow[],
   quality: QualityResult,
   medianHours: number | null,
+  comparisonContextFingerprint: string,
 ): SleepMetricStateSnapshot {
   const inputFactIds = [...quality.provenance.factIds];
   const included = new Set(inputFactIds);
@@ -798,6 +817,7 @@ function metricStateSnapshot(
       metricDefinitionVersion: quality.metricDefinitionVersion,
       inputFactIds,
       inputFingerprint,
+      comparisonContextFingerprint,
       factSupports: quality.provenance.factSupports.map(
         ({ factId, supports }) => ({
           factId,
@@ -854,6 +874,9 @@ export function diffSleepMetricStateSnapshots(
       JSON.stringify(comparison.quality.current.provenance.factSupports) &&
     a.inputFingerprint === comparison.inputFingerprints?.previous &&
     b.inputFingerprint === comparison.inputFingerprints?.current &&
+    a.comparisonContextFingerprint ===
+      fingerprintComparisonContext(comparison) &&
+    b.comparisonContextFingerprint === a.comparisonContextFingerprint &&
     isDeepStrictEqual(previous.quality, comparison.quality.previous) &&
     isDeepStrictEqual(current.quality, comparison.quality.current) &&
     previous.medianHours ===
@@ -878,7 +901,7 @@ export function diffSleepMetricStateSnapshots(
           : 'numeric_changed',
     deltaHours,
     qualityStatus: compatible ? comparison.status : 'insufficient',
-    quality: comparison.quality,
+    quality: compatible ? comparison.quality : null,
     reasons: compatible
       ? [...comparison.reasons]
       : ['incompatible_snapshot_identity'],
@@ -896,17 +919,20 @@ export function evaluateSleepMetricStatePair(
   window: QualityWindow,
 ): SleepMetricStatePair {
   const comparison = evaluateSleepPeriodComparison(facts, window);
+  const comparisonContextFingerprint = fingerprintComparisonContext(comparison);
   const previous = metricStateSnapshot(
     personId,
     facts,
     comparison.quality.previous,
     comparison.comparison?.previousMedianHours ?? null,
+    comparisonContextFingerprint,
   );
   const current = metricStateSnapshot(
     personId,
     facts,
     comparison.quality.current,
     comparison.comparison?.currentMedianHours ?? null,
+    comparisonContextFingerprint,
   );
   return {
     kind: 'partial_sleep_metric_state_pair',
