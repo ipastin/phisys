@@ -93,6 +93,7 @@ test('A16 partial: missing date and source transition suppress numeric claims wi
   expect(missing.diff.status).toBe('unknown');
   expect(missing.diff.deltaHours).toBeNull();
   expect(missing.previous.medianHours).toBeNull();
+  expect(missing.current.medianHours).toBe(8);
   expect(missing.diff.reasons).toContain('insufficient_previous');
 
   const switched = weeks(8, 7).map((fact, index) =>
@@ -112,6 +113,8 @@ test('A16 partial: missing date and source transition suppress numeric claims wi
   const blocked = evaluateSleepMetricStatePair(switched, personId, window);
   expect(blocked.diff.status).toBe('unknown');
   expect(blocked.diff.deltaHours).toBeNull();
+  expect(blocked.previous.medianHours).toBe(8);
+  expect(blocked.current.medianHours).toBeNull();
   expect(blocked.diff.reasons).toContain('source_continuity_unproven');
   expect(blocked.diff.quality?.combined.sourceContinuity.status).toBe(
     'transition',
@@ -122,6 +125,31 @@ test('A16 partial: missing date and source transition suppress numeric claims wi
     comparisonParameters: { previousDays: 7, currentDays: 7 },
     comparisonMethod: null,
   });
+
+  const betweenWeeks = weeks(8, 7).map((fact, index) =>
+    index >= 7
+      ? {
+          ...fact,
+          supports: [
+            {
+              ...fact.supports[0]!,
+              sourceId: 'source-b',
+              connectorId: 'connector-b',
+            },
+          ],
+        }
+      : fact,
+  );
+  const transition = evaluateSleepMetricStatePair(
+    betweenWeeks,
+    personId,
+    window,
+  );
+  expect(transition.previous.medianHours).toBe(8);
+  expect(transition.current.medianHours).toBe(7);
+  expect(transition.diff.status).toBe('unknown');
+  expect(transition.diff.deltaHours).toBeNull();
+  expect(transition.diff.reasons).toContain('source_continuity_unproven');
 });
 
 test('A20 partial: input order, correction and Raw support identity remain auditable', () => {

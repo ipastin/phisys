@@ -797,12 +797,27 @@ function metricStateSnapshot(
   personId: string,
   facts: SleepFactRow[],
   quality: QualityResult,
-  medianHours: number | null,
   comparisonContextFingerprint: string,
 ): SleepMetricStateSnapshot {
   const inputFactIds = [...quality.provenance.factIds];
   const included = new Set(inputFactIds);
   const inputFingerprint = fingerprintSleepInputs(facts, inputFactIds);
+  const numericAllowed =
+    quality.status !== 'insufficient' &&
+    quality.sourceContinuity.status === 'continuous' &&
+    quality.sourceContinuity.connectorIds.length === 1 &&
+    quality.sameDayExtraFactCount === 0 &&
+    quality.excludedFactIds.length === 0;
+  const medianHours = numericAllowed
+    ? median(
+        facts
+          .filter((fact) => included.has(fact.id))
+          .map(
+            (fact) => (fact.value as { canonicalValue: number }).canonicalValue,
+          )
+          .sort((a, b) => a - b),
+      )
+    : null;
   return {
     kind: 'partial_sleep_metric_state',
     identity: {
@@ -879,9 +894,9 @@ export function diffSleepMetricStateSnapshots(
     b.comparisonContextFingerprint === a.comparisonContextFingerprint &&
     isDeepStrictEqual(previous.quality, comparison.quality.previous) &&
     isDeepStrictEqual(current.quality, comparison.quality.current) &&
-    previous.medianHours ===
-      (comparison.comparison?.previousMedianHours ?? null) &&
-    current.medianHours === (comparison.comparison?.currentMedianHours ?? null);
+    (comparison.comparison === null ||
+      (previous.medianHours === comparison.comparison.previousMedianHours &&
+        current.medianHours === comparison.comparison.currentMedianHours));
   const deltaHours = compatible
     ? (comparison.comparison?.absoluteDeltaHours ?? null)
     : null;
@@ -924,14 +939,12 @@ export function evaluateSleepMetricStatePair(
     personId,
     facts,
     comparison.quality.previous,
-    comparison.comparison?.previousMedianHours ?? null,
     comparisonContextFingerprint,
   );
   const current = metricStateSnapshot(
     personId,
     facts,
     comparison.quality.current,
-    comparison.comparison?.currentMedianHours ?? null,
     comparisonContextFingerprint,
   );
   return {
