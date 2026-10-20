@@ -1,11 +1,11 @@
 ---
 title: MyPhisys — M2 Step 12.1 partial sleep metric-state implementation
 created: "20-10-26 15-30-45"
-updated: "20-10-26 16-24-29"
+updated: "20-10-26 16-29-40"
 timezone: Europe/Moscow
-version: 0.1.4
-commit: "fix(analytics): resolve Step 12.1 review findings"
-status: in_progress
+version: 0.1.5
+commit: "docs(plan): record Step 12.1 review-fix CI evidence"
+status: complete
 ---
 
 # M2 Step 12.1 — partial sleep metric-state implementation
@@ -16,7 +16,7 @@ Compute two adjacent closed seven-local-date `sleep_duration` metric-state snaps
 
 ## 2. Status / Authorization
 
-`in_progress`; owner Igor Pastin authorized implementation and a draft PR on 20-10-26, then explicitly authorized fixing P1/P2 findings of the independent [PR #13](https://github.com/ipastin/phisys/pull/13) review. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). Merge, deploy, PR #10/#12 integration, schema changes, and source-pack edits are outside this authorization.
+`complete` for the approved Step 12.1 slice and independent-review fixes; owner Igor Pastin authorized implementation and a draft PR on 20-10-26, then explicitly authorized fixing P1/P2 findings of the independent [PR #13](https://github.com/ipastin/phisys/pull/13) review. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). Merge, deploy, PR #10/#12 integration, schema changes, and source-pack edits are outside this authorization.
 
 ## 3. Context / Sources
 
@@ -58,7 +58,7 @@ Local review-fix checks on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, w
 
 Local evidence on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, implementation commit `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`: `pnpm lint` pass; `pnpm format:check` pass; `pnpm typecheck` pass after correcting a type-only window field; `pnpm test` pass (analytics 29 unit cases plus architecture 19); `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` pass (database 3, ingestion 13, connectors 2, analytics 9); `pnpm build` pass; staged diff check pass. Disposable container was removed. Output evidence: command results in this task and the new `metric-state.test.ts` / extended analytics DB integration test.
 
-Earlier CI evidence: [run #48](https://github.com/ipastin/phisys/actions/runs/39425042478) passed on implementation head `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`, and [run #49](https://github.com/ipastin/phisys/actions/runs/39425512582) passed on pre-review draft PR head `ac33a16ad3c0b2c56b3917956e2e9ab939939825`. These do not validate the review fix. Its final exact-head run is `needs_review`; the SHA, run and job results must be recorded in PR #13 before handoff.
+Earlier CI evidence: [run #48](https://github.com/ipastin/phisys/actions/runs/39425042478) passed on implementation head `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`, and [run #49](https://github.com/ipastin/phisys/actions/runs/39425512582) passed on pre-review draft PR head `ac33a16ad3c0b2c56b3917956e2e9ab939939825`. Review-fix [run #39430391148](https://github.com/ipastin/phisys/actions/runs/39430391148) passed on exact code-and-plan head `2ed6ae5038ef3719e2f5e63bac199a735b6b7527` on 20-10-26: `validate` passed frozen install, lint, format, typecheck, unit/architecture and disposable-DB tests, build, high-severity audit and full-history secret scan. The exact CI result for this subsequent documentation-only plan commit will be recorded in the draft PR body after it completes.
 
 ## 9. Progress
 
@@ -67,7 +67,7 @@ Earlier CI evidence: [run #48](https://github.com/ipastin/phisys/actions/runs/39
 - [x] 20-10-26 15-43-42: synthetic and disposable-DB evidence passed; container removed.
 - [x] 20-10-26 15-49-26: local checks passed; commit `5aab675` and draft [PR #13](https://github.com/ipastin/phisys/pull/13) created; exact implementation-head CI run #48 passed.
 - [x] 20-10-26 16-22-02: independent review's three P1/P2 findings reproduced by failing tests, fixed in analytics, and local checks plus disposable DB tests passed.
-- [ ] Exact-head CI for the review-fix commit and draft PR metadata: `needs_review` until GitHub reports the final head.
+- [x] 20-10-26 16-29-40: exact code-and-plan head `2ed6ae5` passed [CI run #39430391148](https://github.com/ipastin/phisys/actions/runs/39430391148); PR #13 body updated with base/head, checks and partial coverage. The final documentation-only head receives its own CI check before handoff; its exact SHA/run is tracked in the PR body.
 
 ## 10. Decision log
 
@@ -87,4 +87,4 @@ All work is isolated on this branch. Re-run pure tests without side effects; DB 
 
 ## 13. Outcomes / Retrospective
 
-Option A/T1/D1 slice and P1/P2 review fixes pass local synthetic and disposable-DB checks. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Exact-head CI for this correction remains `needs_review` until verified on the pushed SHA. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes. Next step: verify exact-head CI on draft PR #13; merge/deploy require separate decisions.
+Option A/T1/D1 slice and P1/P2 review fixes pass local synthetic and disposable-DB checks and exact code-and-plan head CI at `2ed6ae5`. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes. The draft PR records CI on its final documentation-only head; merge/deploy require separate decisions.
