@@ -1,11 +1,11 @@
 ---
 title: MyPhisys — M2 Step 12.1 partial sleep metric-state implementation
 created: "20-10-26 15-30-45"
-updated: "20-10-26 15-45-00"
+updated: "20-10-26 15-49-26"
 timezone: Europe/Moscow
-version: 0.1.2
-commit: "docs(plan): record Step 12.1 local checks"
-status: in_progress
+version: 0.1.3
+commit: "docs(plan): record Step 12.1 validation outcome"
+status: complete
 ---
 
 # M2 Step 12.1 — partial sleep metric-state implementation
@@ -50,14 +50,16 @@ The runtime reads once via `readCurrentSleepFacts` (`BEGIN READ ONLY`, `SET LOCA
 
 Run `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:db` where disposable PostgreSQL is available, `pnpm build`, `git diff --check`, and exact-head GitHub CI. Golden cases: unchanged zero, tiny nonzero signed delta, limited numerical result, insufficient/blocker suppression, stable sorted identity after input order change, correction/support swap with same median but changed provenance, same T1 across snapshots/diff/Quality, no external override, incompatible person/scope/profile, no historical as-of or direct insight. Existing DB tests cover RLS, grants, read-only and Raw payload denial; new DB cases exercise the Step 12.1 entrypoint. Full A15/A16 and Step 13/14 remain `needs_review`.
 
-Local evidence on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, working tree based on `c266de4` (implementation commit pending): `pnpm lint` pass; `pnpm format:check` pass; `pnpm typecheck` pass after correcting a type-only window field; `pnpm test` pass (analytics 29 unit cases plus architecture 19); `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` pass (database 3, ingestion 13, connectors 2, analytics 9); `pnpm build` pass; `git diff --check` pass. Disposable container was removed. Exact-head CI remains `not_run` until push/PR. Output evidence: command results in this task and the new `metric-state.test.ts` / extended analytics DB integration test.
+Local evidence on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, implementation commit `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`: `pnpm lint` pass; `pnpm format:check` pass; `pnpm typecheck` pass after correcting a type-only window field; `pnpm test` pass (analytics 29 unit cases plus architecture 19); `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` pass (database 3, ingestion 13, connectors 2, analytics 9); `pnpm build` pass; staged diff check pass. Disposable container was removed. Output evidence: command results in this task and the new `metric-state.test.ts` / extended analytics DB integration test.
+
+CI evidence: [MyPhisys validation run #48](https://github.com/ipastin/phisys/actions/runs/39425042478) completed successfully for exact implementation head `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`. The `validate` job passed runtime, frozen install, lint, format, typecheck, unit/architecture tests, disposable-DB tests, build, high-severity audit and full-history secret scan. This evidence-only plan update will create a new PR head and re-trigger CI; that final run must be checked before handoff.
 
 ## 9. Progress
 
 - [x] 20-10-26 15-30-45: fresh `main`, PR #10/#12, Step 11, instructions, specs and affected code inspected.
 - [x] 20-10-26 15-43-42: contract and implementation; reused one read and Step 11 Quality/comparison.
 - [x] 20-10-26 15-43-42: synthetic and disposable-DB evidence passed; container removed.
-- [ ] Local checks, commit, draft PR and exact-head CI.
+- [x] 20-10-26 15-49-26: local checks passed; commit `5aab675` and draft [PR #13](https://github.com/ipastin/phisys/pull/13) created; exact implementation-head CI run #48 passed.
 
 ## 10. Decision log
 
@@ -73,4 +75,4 @@ All work is isolated on this branch. Re-run pure tests without side effects; DB 
 
 ## 13. Outcomes / Retrospective
 
-Pending implementation and verification. Record exact commands, cwd, commit SHA, outcome, timestamp and pointers here. Merge/deploy remain separate owner decisions.
+Option A/T1/D1 slice implemented and verified on synthetic data. A15 and A16 are partial; A20 has executable per-fact provenance coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes. Next step: review draft PR #13 and decide later structural/historical scope; merge/deploy require separate decisions.
