@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 12.1 partial sleep metric-state implementation
 created: "20-10-26 15-30-45"
-updated: "20-10-26 21-42-16"
+updated: "20-10-26 22-12-04"
 timezone: Europe/Moscow
-version: 0.1.10
-commit: "docs(plan): record identity isolation P2 validation"
+version: 0.1.11
+commit: "docs(plan): record standalone diff P1 P2 validation"
 status: complete
 ---
 
@@ -16,7 +16,7 @@ Compute two adjacent closed seven-local-date `sleep_duration` metric-state snaps
 
 ## 2. Status / Authorization
 
-`complete` for the approved Step 12.1 slice and review fixes; owner Igor Pastin authorized implementation and draft [PR #13](https://github.com/ipastin/phisys/pull/13), then explicitly authorized each P1/P2 correction. After an owner acceptance review found that diff identities still shared mutable references with snapshots, the owner authorized this identity isolation fix, synthetic regression, plan/PR update, and checks without merge or deploy. A new head requires separate merge approval. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). PR #10/#12 integration, schema changes, and source-pack edits remain outside scope.
+`complete` for the approved Step 12.1 slice and review fixes; owner Igor Pastin authorized implementation and [PR #13](https://github.com/ipastin/phisys/pull/13), then explicitly authorized each P1/P2 correction. A ready review on `8d1b350` found mutable comparison delta and false `insufficient` Quality on incompatible diffs; the owner authorized minimal fixes, synthetic regressions, plan/PR update, and checks without merge or deploy. PR #13 returned to draft. A new head requires separate merge approval. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). PR #10/#12 integration, schema changes, and source-pack edits remain outside scope.
 
 ## 3. Context / Sources
 
@@ -44,10 +44,12 @@ Quality isolation P2 correction: the snapshot and compatible diff each publish a
 
 Identity isolation P2 correction: the standalone diff deep-copies previous/current snapshot identities at its output boundary. Mutating a snapshot's nested Raw support no longer changes the returned diff identity, and mutating the diff identity no longer changes a snapshot. Compatibility checks and input fingerprints remain unchanged; this is output isolation, not an immutability guarantee for a caller's own object.
 
+Ready-review P1/P2 correction: after standalone compatibility checks match comparison medians to snapshot medians, the diff derives signed delta from those checked medians instead of trusting the mutable `absoluteDeltaHours` field. This preserves exact-zero and small nonzero D1 semantics. An incompatible diff has `quality: null` and `qualityStatus: null`; a coherent blocked comparison still has `qualityStatus: 'insufficient'` and its Quality reasons. No Step 11 algorithm, reader or provenance input changes.
+
 ## 6. Files and dependencies
 
-- `packages/analytics/src/index.ts`: existing comparison carries previous/current/comparison-relevant input fingerprints; snapshot identity binds combined Quality, and the standalone diff validates the context. Incompatible diff Quality is null. Each snapshot computes its own Quality-gated median and publishes independent Quality; compatible diff Quality and both identities are also copied. No reader, grant or schema changes.
-- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, mixed-comparison and combined-Quality regressions, independently usable median cases, and mutation isolation for Quality and identities.
+- `packages/analytics/src/index.ts`: existing comparison carries previous/current/comparison-relevant input fingerprints; snapshot identity binds combined Quality, and the standalone diff validates the context. Incompatible diff Quality and Quality status are null. The diff derives delta from checked medians; each snapshot retains its own Quality-gated median. Compatible diff Quality and both identities are copied. No reader, grant or schema changes.
+- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, mixed-comparison and combined-Quality regressions, independently usable median cases, mutation isolation for Quality and identities, tampered comparison delta, and incompatible Quality status.
 - `packages/analytics/test/integration.test.ts`: read boundary, runtime time, person isolation, correction and Raw support lifecycle; nullable incompatible Quality is handled in assertions.
 - `.agent/plans/…`: this living implementation plan uses repository-relative cwd evidence. Existing fixtures (`packages/ingestion/test/golden.ts`), grants (`packages/database/migrations/0002_up.sql`), database reader, package export and CI are reused unchanged.
 
@@ -80,6 +82,8 @@ Quality isolation P2 on 20-10-26, cwd repository root (`.`): new synthetic mutat
 
 Identity isolation P2 on 20-10-26, cwd repository root (`.`): synthetic mutation regression first failed against `74b99e6c5fc8ed8ca07c09b763807f9a57a2bdb1` (`mutated-snapshot-raw` leaked into `pair.diff.current.factSupports`). After code commit `1675985f586c642aa9510604e27aca53b3803cc2`, focused Vitest passed 11/11, including the reverse diff-to-snapshot case. Local `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` (including build and 19 architecture cases), and `git diff --check` passed. An initial format check failed on the new test, then passed after Prettier. Local disposable-DB tests were `not_run` for this output-copy fix. [Exact code-head CI](https://github.com/ipastin/phisys/actions/runs/39476717853) passed: `validate` completed frozen install, lint, format, typecheck, unit/architecture and disposable-DB tests, build, high-severity audit and full-history secret scan. The final documentation-head CI result belongs in PR #13.
 
+Ready-review P1/P2 on 20-10-26, cwd repository root (`.`): two synthetic regressions first failed on `8d1b350a95771c66be7d5190bb710a625cdc21e9` (`deltaHours: 99` instead of `0`; incompatible `qualityStatus: 'insufficient'` instead of `null`). After code commit `b999da53d1b6948638543e87442c6635656f67e3`, focused Vitest passed 13/13 for exact zero, signed nonzero delta and incompatible Quality; a blocked coherent comparison still reports `insufficient`. An initial typecheck failed on tuple inference in the new test; after correction, local `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` (analytics 37 unit cases, build and 19 architecture cases), and `git diff --check` passed. Local disposable-DB tests were `not_run` for this pure diff-output correction. [Exact code-head CI](https://github.com/ipastin/phisys/actions/runs/39481000040) passed: frozen install, lint, format, typecheck, unit/architecture and disposable-DB tests, build, high-severity audit and full-history secret scan. Final documentation-head CI belongs in PR #13.
+
 ## 9. Progress
 
 - [x] 20-10-26 15-30-45: fresh `main`, PR #10/#12, Step 11, instructions, specs and affected code inspected.
@@ -93,6 +97,7 @@ Identity isolation P2 on 20-10-26, cwd repository root (`.`): synthetic mutation
 - [x] 20-10-26 18-18-28: ready-for-review P2 reproduced by a failing synthetic assertion, corrected in `26700ff`, and passed local checks plus exact code-head [CI run #39446914952](https://github.com/ipastin/phisys/actions/runs/39446914952). P1 local paths are removed from this plan's current contents. Final documentation-head CI and PR body are recorded separately before handoff.
 - [x] 20-10-26 18-57-13: shared-Quality P2 reproduced by a failing mutation regression, corrected in `422c4fa`, and passed local checks plus exact code-head [CI run #39452836066](https://github.com/ipastin/phisys/actions/runs/39452836066). Final documentation-head CI and PR body are recorded separately before handoff.
 - [x] 20-10-26 21-42-16: shared identity P2 reproduced by a failing synthetic regression, corrected in `1675985`, and passed local focused/full checks plus exact code-head [CI run #39476717853](https://github.com/ipastin/phisys/actions/runs/39476717853). Final documentation-head CI is pending before handoff.
+- [x] 20-10-26 22-12-04: ready-review P1/P2 reproduced by two failing synthetic regressions, corrected in `b999da5`, and passed local focused/full checks plus exact code-head [CI run #39481000040](https://github.com/ipastin/phisys/actions/runs/39481000040). Final documentation-head CI and PR body are updated separately before handoff.
 
 ## 10. Decision log
 
@@ -110,6 +115,8 @@ Identity isolation P2 on 20-10-26, cwd repository root (`.`): synthetic mutation
 
 20-10-26 identity isolation P2: deep-copy both snapshot identities at the diff output boundary with the existing `structuredClone` pattern. Alternative 1, shallow-copy identities, leaves nested fact supports shared. Alternative 2, freeze the entire pair graph, changes caller mutation behavior beyond this finding. Two copies preserve the diff shape and all existing compatibility checks.
 
+20-10-26 ready-review P1/P2: derive diff delta from the already verified comparison medians. Alternative 1, trust `absoluteDeltaHours`, lets a mutable field contradict snapshots. Alternative 2, reject inconsistent comparison arithmetic, adds a new incompatibility path when a correct delta can be calculated. For incompatible diffs, use nullable `qualityStatus` alongside existing null Quality; adding an `incompatible` Quality status would expand the Quality vocabulary. These boundary changes preserve D1 and real `insufficient` blocker semantics.
+
 ## 11. Surprises / Open questions
 
 The current mutable store cannot reconstruct historical `knowledge_as_of`. Exact duplicate receipt count remains `unavailable`. There is no Step 13/14 consumer in this repository; the Step 12.1 diff type carries a literal `promotion` gate and contract comment, while actual future consumer enforcement is `needs_review`. Docker Desktop was initially stopped, then started for disposable DB verification. One type-only field was accidentally applied to the existing baseline type, caught by `pnpm typecheck` and corrected before the final checks.
@@ -126,10 +133,12 @@ The next ready-for-review automated review found that snapshot and diff Quality 
 
 The owner acceptance review of `74b99e6` found the same cross-result alias in diff identity references. A nested Raw support mutation changed the diff identity without recomputation while its fingerprint and Quality provenance remained unchanged. The diff now copies the identities; no API shape, schema, reader, grants or Step 13 change was needed.
 
+The ready review on `8d1b350` found that compatible standalone diffs could trust a tampered delta and that incompatible diffs falsely labelled Quality insufficient. Both boundary behaviors are corrected without changing Step 11 calculations. A subsequent CodeRabbit comment independently identified the delta issue. The PR remains draft pending a new owner acceptance decision; no merge or deploy was performed.
+
 ## 12. Recovery / Idempotence
 
 All work is isolated on this branch. Re-run pure tests without side effects; DB tests require `M1_DISPOSABLE_DB=1`. Do not merge or transplant PR #10/#12. Recheck remote base before PR creation; retain the branch and exact CI SHA for review.
 
 ## 13. Outcomes / Retrospective
 
-Option A/T1/D1 slice and P1/P2 review fixes, including independently preserved Quality-approved snapshot medians, isolated Quality and identity outputs, and both standalone mixed-recomputation guards, pass local synthetic checks and exact code-head CI at `1675985` (including disposable-DB tests). The draft PR tracks exact CI for its final documentation head. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes; merge/deploy require separate decisions.
+Option A/T1/D1 slice and P1/P2 review fixes, including independently preserved Quality-approved snapshot medians, isolated Quality and identity outputs, both standalone mixed-recomputation guards, checked signed delta and nullable incompatible Quality status, pass local synthetic checks and exact code-head CI at `b999da5` (including disposable-DB tests). The draft PR tracks exact CI for its final documentation head. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes; merge/deploy require separate decisions.
