@@ -722,6 +722,8 @@ function fingerprintComparisonContext(
   return fingerprint({
     inputFingerprint: comparison.inputFingerprints?.comparison,
     combinedQuality: comparison.quality.combined,
+    status: comparison.status,
+    reasons: comparison.reasons,
   });
 }
 

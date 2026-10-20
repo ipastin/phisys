@@ -352,6 +352,32 @@ test('incompatible diff does not claim insufficient Quality', () => {
   expect(incompatible.qualityStatus).toBeNull();
 });
 
+test('standalone diff rejects mutated comparison status and reasons', () => {
+  const facts = weeks();
+  const pair = evaluateSleepMetricStatePair(facts, personId, window);
+  for (const mutate of [
+    (comparison: ReturnType<typeof evaluateSleepPeriodComparison>) => {
+      comparison.status = 'insufficient';
+    },
+    (comparison: ReturnType<typeof evaluateSleepPeriodComparison>) => {
+      comparison.reasons.push('injected_reason');
+    },
+  ]) {
+    const comparison = evaluateSleepPeriodComparison(facts, window);
+    mutate(comparison);
+    const diff = diffSleepMetricStateSnapshots(
+      pair.previous,
+      pair.current,
+      comparison,
+    );
+    expect(diff.status).toBe('incompatible');
+    expect(diff.deltaHours).toBeNull();
+    expect(diff.qualityStatus).toBeNull();
+    expect(diff.quality).toBeNull();
+    expect(diff.reasons).toEqual(['incompatible_snapshot_identity']);
+  }
+});
+
 test('standalone diff rejects comparison from a different input or Quality revision', () => {
   const facts = weeks();
   const original = evaluateSleepMetricStatePair(facts, personId, window);
