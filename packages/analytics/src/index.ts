@@ -661,3 +661,234 @@ export async function sleepPeriodComparison(
     window,
   );
 }
+
+export type SleepMetricStateRequest = Omit<QualityWindow, 'calculatedAt'>;
+
+export type SleepMetricStateSnapshot = {
+  kind: 'partial_sleep_metric_state';
+  identity: {
+    personId: string;
+    scope: 'sleep_duration';
+    window: { startDate: string; endDateExclusive: string; asOfDate: string };
+    algorithmVersion: 'sleep-metric-state-v1';
+    metricDefinitionVersion: string;
+    inputFactIds: string[];
+    factSupports: QualityResult['provenance']['factSupports'];
+  };
+  observedAt: { factId: string; effective: unknown }[];
+  medianHours: number | null;
+  quality: QualityResult;
+  structuralDomains: {
+    conditions: 'unavailable';
+    medications: 'unavailable';
+    allergies: 'unavailable';
+    goals: 'unavailable';
+    recentEvents: 'unavailable';
+    conflicts: 'unavailable';
+  };
+  calculatedAt: string;
+  knowledgeAsOf: 'unavailable';
+};
+
+export type SleepMetricStateDiff = {
+  kind: 'partial_sleep_metric_state_diff';
+  status: 'numeric_changed' | 'unchanged' | 'unknown' | 'incompatible';
+  deltaHours: number | null;
+  qualityStatus: SleepPeriodComparisonResult['status'];
+  quality: SleepPeriodComparisonResult['quality'];
+  reasons: string[];
+  previous: SleepMetricStateSnapshot['identity'];
+  current: SleepMetricStateSnapshot['identity'];
+  /** Computation time only; it cannot answer historical knowledge-as-of queries. */
+  calculatedAt: string;
+  knowledgeAsOf: 'unavailable';
+  /** numeric_changed is descriptive, never an InsightCandidate or What Changed item. Step 13 must assess Quality, reasons, uncertainty, baseline and persistence. */
+  promotion: 'requires_step13_meaningfulness';
+};
+
+export type SleepMetricStatePair = {
+  kind: 'partial_sleep_metric_state_pair';
+  previous: SleepMetricStateSnapshot;
+  current: SleepMetricStateSnapshot;
+  diff: SleepMetricStateDiff;
+  calculatedAt: string;
+  knowledgeAsOf: 'unavailable';
+};
+
+const unavailableStructuralDomains = {
+  conditions: 'unavailable',
+  medications: 'unavailable',
+  allergies: 'unavailable',
+  goals: 'unavailable',
+  recentEvents: 'unavailable',
+  conflicts: 'unavailable',
+} as const;
+
+function metricStateSnapshot(
+  personId: string,
+  facts: SleepFactRow[],
+  quality: QualityResult,
+  medianHours: number | null,
+): SleepMetricStateSnapshot {
+  const inputFactIds = [...quality.provenance.factIds];
+  const included = new Set(inputFactIds);
+  return {
+    kind: 'partial_sleep_metric_state',
+    identity: {
+      personId,
+      scope: 'sleep_duration',
+      window: {
+        startDate: quality.window.startDate,
+        endDateExclusive: quality.window.endDateExclusive,
+        asOfDate: quality.window.asOfDate,
+      },
+      algorithmVersion: 'sleep-metric-state-v1',
+      metricDefinitionVersion: quality.metricDefinitionVersion,
+      inputFactIds,
+      factSupports: quality.provenance.factSupports.map(
+        ({ factId, supports }) => ({
+          factId,
+          supports: supports.map((support) => ({ ...support })),
+        }),
+      ),
+    },
+    observedAt: facts
+      .filter((fact) => included.has(fact.id))
+      .map((fact) => ({
+        factId: fact.id,
+        effective: structuredClone(fact.effective),
+      }))
+      .sort((a, b) => a.factId.localeCompare(b.factId)),
+    medianHours,
+    quality,
+    structuralDomains: { ...unavailableStructuralDomains },
+    calculatedAt: quality.calculatedAt,
+    knowledgeAsOf: 'unavailable',
+  };
+}
+
+export function diffSleepMetricStateSnapshots(
+  previous: SleepMetricStateSnapshot,
+  current: SleepMetricStateSnapshot,
+  comparison: SleepPeriodComparisonResult,
+): SleepMetricStateDiff {
+  const a = previous.identity;
+  const b = current.identity;
+  const compatible =
+    a.personId === b.personId &&
+    a.scope === b.scope &&
+    a.algorithmVersion === b.algorithmVersion &&
+    a.metricDefinitionVersion === b.metricDefinitionVersion &&
+    a.metricDefinitionVersion === comparison.metricDefinitionVersion &&
+    a.window.endDateExclusive === b.window.startDate &&
+    a.window.startDate === comparison.quality.previous.window.startDate &&
+    a.window.endDateExclusive ===
+      comparison.quality.previous.window.endDateExclusive &&
+    a.window.asOfDate === comparison.quality.previous.window.asOfDate &&
+    b.window.startDate === comparison.quality.current.window.startDate &&
+    b.window.endDateExclusive ===
+      comparison.quality.current.window.endDateExclusive &&
+    b.window.asOfDate === comparison.quality.current.window.asOfDate &&
+    previous.calculatedAt === current.calculatedAt &&
+    current.calculatedAt === comparison.calculatedAt &&
+    JSON.stringify(a.inputFactIds) ===
+      JSON.stringify(comparison.quality.previous.provenance.factIds) &&
+    JSON.stringify(b.inputFactIds) ===
+      JSON.stringify(comparison.quality.current.provenance.factIds) &&
+    JSON.stringify(a.factSupports) ===
+      JSON.stringify(comparison.quality.previous.provenance.factSupports) &&
+    JSON.stringify(b.factSupports) ===
+      JSON.stringify(comparison.quality.current.provenance.factSupports) &&
+    previous.medianHours ===
+      (comparison.comparison?.previousMedianHours ?? null) &&
+    current.medianHours === (comparison.comparison?.currentMedianHours ?? null);
+  const deltaHours = compatible
+    ? (comparison.comparison?.absoluteDeltaHours ?? null)
+    : null;
+  return {
+    kind: 'partial_sleep_metric_state_diff',
+    status: !compatible
+      ? 'incompatible'
+      : deltaHours === null
+        ? 'unknown'
+        : deltaHours === 0
+          ? 'unchanged'
+          : 'numeric_changed',
+    deltaHours,
+    qualityStatus: compatible ? comparison.status : 'insufficient',
+    quality: comparison.quality,
+    reasons: compatible
+      ? [...comparison.reasons]
+      : ['incompatible_snapshot_identity'],
+    previous: a,
+    current: b,
+    calculatedAt: comparison.calculatedAt,
+    knowledgeAsOf: 'unavailable',
+    promotion: 'requires_step13_meaningfulness',
+  };
+}
+
+export function evaluateSleepMetricStatePair(
+  facts: SleepFactRow[],
+  personId: string,
+  window: QualityWindow,
+): SleepMetricStatePair {
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  const previous = metricStateSnapshot(
+    personId,
+    facts,
+    comparison.quality.previous,
+    comparison.comparison?.previousMedianHours ?? null,
+  );
+  const current = metricStateSnapshot(
+    personId,
+    facts,
+    comparison.quality.current,
+    comparison.comparison?.currentMedianHours ?? null,
+  );
+  return {
+    kind: 'partial_sleep_metric_state_pair',
+    previous,
+    current,
+    diff: diffSleepMetricStateSnapshots(previous, current, comparison),
+    calculatedAt: window.calculatedAt,
+    knowledgeAsOf: 'unavailable',
+  };
+}
+
+export async function sleepMetricStatePair(
+  pool: Pool,
+  personId: string,
+  request: SleepMetricStateRequest,
+): Promise<SleepMetricStatePair> {
+  if (
+    Object.keys(request).some(
+      (key) => !['startDate', 'endDateExclusive', 'asOfDate'].includes(key),
+    )
+  )
+    throw new Error('Only window dates may be supplied');
+  const start = day(request.startDate);
+  const end = day(request.endDateExclusive);
+  const asOf = day(request.asOfDate);
+  if (
+    (end - start) / dayMs !== sleepDuration.comparisonParameters.currentDays ||
+    asOf < end
+  )
+    throw new Error('Current window must be 7 closed local dates');
+  const previousStart = new Date(
+    start - sleepDuration.comparisonParameters.previousDays * dayMs,
+  )
+    .toISOString()
+    .slice(0, 10);
+  const facts = await readCurrentSleepFacts(
+    pool,
+    personId,
+    previousStart,
+    request.endDateExclusive,
+  );
+  const calculatedAt = new Date().toISOString();
+  return evaluateSleepMetricStatePair(facts, personId, {
+    ...request,
+    calculatedAt,
+  });
+}

@@ -4,6 +4,7 @@ import { ingest } from '@myphisys/ingestion';
 import { goldenRecords } from '../../ingestion/test/golden.js';
 import {
   sleepBaselineTrend,
+  sleepMetricStatePair,
   sleepPeriodComparison,
   sleepQuality,
   type QualityWindow,
@@ -119,6 +120,30 @@ test('DB adjacent weeks compare person-scoped medians and preserve Raw lineage',
   };
   const a = await sleepPeriodComparison(reader, personA, period);
   const b = await sleepPeriodComparison(reader, personB, period);
+  const partialA = await sleepMetricStatePair(reader, personA, {
+    startDate: period.startDate,
+    endDateExclusive: period.endDateExclusive,
+    asOfDate: period.asOfDate,
+  });
+  const partialB = await sleepMetricStatePair(reader, personB, {
+    startDate: period.startDate,
+    endDateExclusive: period.endDateExclusive,
+    asOfDate: period.asOfDate,
+  });
+  expect(partialA.diff.status).toBe('numeric_changed');
+  expect(partialA.diff.qualityStatus).toBe('limited');
+  expect(partialB.diff.status).toBe('unknown');
+  expect(partialA.previous.identity.personId).toBe(personA);
+  expect(partialB.previous.identity.personId).toBe(personB);
+  expect(partialA.diff.quality.combined.provenance.factIds).not.toEqual(
+    partialB.diff.quality.combined.provenance.factIds,
+  );
+  expect(partialA.previous.calculatedAt).toBe(partialA.current.calculatedAt);
+  expect(partialA.current.calculatedAt).toBe(partialA.diff.calculatedAt);
+  expect(partialA.diff.calculatedAt).toBe(
+    partialA.diff.quality.combined.calculatedAt,
+  );
+  expect(partialA.knowledgeAsOf).toBe('unavailable');
   expect(a.status).toBe('limited');
   expect(a.comparison).not.toBeNull();
   expect(a.quality.previous.coverage.observedDays).toBe(7);
@@ -194,7 +219,13 @@ test('DB correction, support swap and tombstones recompute period provenance and
     },
   };
   const before = await sleepPeriodComparison(reader, personD, period);
+  const initialState = await sleepMetricStatePair(reader, personD, {
+    startDate: period.startDate,
+    endDateExclusive: period.endDateExclusive,
+    asOfDate: period.asOfDate,
+  });
   expect(before.comparison?.absoluteDeltaHours).toBe(0);
+  expect(initialState.diff.status).toBe('unchanged');
   const support = { ...base, externalRecordId: 'step11-second-support' };
   expect((await ingest(writer, support)).state).toBe('duplicate');
   const withSupport = await sleepPeriodComparison(reader, personD, period);
@@ -211,16 +242,52 @@ test('DB correction, support swap and tombstones recompute period provenance and
     ).state,
   ).toBe('imported');
   const afterSwap = await sleepPeriodComparison(reader, personD, period);
+  const swappedState = await sleepMetricStatePair(reader, personD, {
+    startDate: period.startDate,
+    endDateExclusive: period.endDateExclusive,
+    asOfDate: period.asOfDate,
+  });
   expect(afterSwap.comparison).toEqual(before.comparison);
+  expect(swappedState.diff.status).toBe('unchanged');
+  expect(swappedState.previous.identity.factSupports).not.toEqual(
+    initialState.previous.identity.factSupports,
+  );
   expect(afterSwap.quality.combined.provenance.rawRecordIds).toHaveLength(14);
   expect(afterSwap.quality.combined.provenance.rawRecordIds).not.toEqual(
     before.quality.combined.provenance.rawRecordIds,
+  );
+  const firstCurrent = goldenRecords(personD).find(
+    (item) =>
+      item.payload.conceptId === 'sleep_duration' &&
+      (item.payload.effective as { value: string }).value === '2026-01-08',
+  )!;
+  expect(
+    (
+      await ingest(writer, {
+        ...firstCurrent,
+        eventKey: 'step11:2026-01-08',
+        version: 2,
+        payload: {
+          ...firstCurrent.payload,
+          value: { kind: 'quantity', originalValue: 9, originalUnit: 'h' },
+        },
+      })
+    ).state,
+  ).toBe('imported');
+  const singleCorrection = await sleepMetricStatePair(reader, personD, {
+    startDate: period.startDate,
+    endDateExclusive: period.endDateExclusive,
+    asOfDate: period.asOfDate,
+  });
+  expect(singleCorrection.diff.status).toBe('unchanged');
+  expect(singleCorrection.current.identity.inputFactIds).not.toEqual(
+    swappedState.current.identity.inputFactIds,
   );
   for (const current of goldenRecords(personD).filter((item) => {
     const date = (item.payload.effective as { value: string }).value;
     return (
       item.payload.conceptId === 'sleep_duration' &&
-      date >= '2026-01-08' &&
+      date >= '2026-01-09' &&
       date <= '2026-01-11'
     );
   })) {
@@ -240,6 +307,15 @@ test('DB correction, support swap and tombstones recompute period provenance and
     ).toBe('imported');
   }
   const corrected = await sleepPeriodComparison(reader, personD, period);
+  const correctedState = await sleepMetricStatePair(reader, personD, {
+    startDate: period.startDate,
+    endDateExclusive: period.endDateExclusive,
+    asOfDate: period.asOfDate,
+  });
+  expect(correctedState.diff).toMatchObject({
+    status: 'numeric_changed',
+    deltaHours: 1,
+  });
   expect(corrected.comparison).toMatchObject({
     previousMedianHours: 8,
     currentMedianHours: 9,
@@ -260,7 +336,14 @@ test('DB correction, support swap and tombstones recompute period provenance and
     ).state,
   ).toBe('imported');
   const removed = await sleepPeriodComparison(reader, personD, period);
+  const removedState = await sleepMetricStatePair(reader, personD, {
+    startDate: period.startDate,
+    endDateExclusive: period.endDateExclusive,
+    asOfDate: period.asOfDate,
+  });
   expect(removed.status).toBe('insufficient');
+  expect(removedState.diff.status).toBe('unknown');
+  expect(removedState.diff.deltaHours).toBeNull();
   expect(removed.comparison).toBeNull();
   expect(removed.quality.previous.missingDates).toContain('2026-01-01');
 });
