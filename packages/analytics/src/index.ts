@@ -848,7 +848,7 @@ function metricStateSnapshot(
       }))
       .sort((a, b) => a.factId.localeCompare(b.factId)),
     medianHours,
-    quality,
+    quality: structuredClone(quality),
     structuralDomains: { ...unavailableStructuralDomains },
     calculatedAt: quality.calculatedAt,
     knowledgeAsOf: 'unavailable',
@@ -916,7 +916,7 @@ export function diffSleepMetricStateSnapshots(
           : 'numeric_changed',
     deltaHours,
     qualityStatus: compatible ? comparison.status : 'insufficient',
-    quality: compatible ? comparison.quality : null,
+    quality: compatible ? structuredClone(comparison.quality) : null,
     reasons: compatible
       ? [...comparison.reasons]
       : ['incompatible_snapshot_identity'],

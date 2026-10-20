@@ -152,6 +152,33 @@ test('A16 partial: missing date and source transition suppress numeric claims wi
   expect(transition.diff.reasons).toContain('source_continuity_unproven');
 });
 
+test('snapshot and standalone diff Quality do not share mutable provenance', () => {
+  const facts = weeks();
+  const pair = evaluateSleepMetricStatePair(facts, personId, window);
+  pair.current.quality.status = 'limited';
+  pair.current.quality.provenance.factIds.push('mutated-fact');
+  expect(pair.diff.quality?.current.status).toBe('sufficient');
+  expect(pair.diff.quality?.current.provenance.factIds).not.toContain(
+    'mutated-fact',
+  );
+  expect(pair.diff.qualityStatus).toBe('sufficient');
+  expect(pair.diff.reasons).toEqual([]);
+
+  const fresh = evaluateSleepMetricStatePair(facts, personId, window);
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  const diff = diffSleepMetricStateSnapshots(
+    fresh.previous,
+    fresh.current,
+    comparison,
+  );
+  comparison.quality.combined.provenance.factIds.push('mutated-fact');
+  expect(diff.quality?.combined.provenance.factIds).not.toContain(
+    'mutated-fact',
+  );
+  diff.quality!.current.reasons.push('mutated-reason');
+  expect(fresh.current.quality.reasons).not.toContain('mutated-reason');
+});
+
 test('A20 partial: input order, correction and Raw support identity remain auditable', () => {
   const facts = weeks();
   const original = evaluateSleepMetricStatePair(facts, personId, window);
