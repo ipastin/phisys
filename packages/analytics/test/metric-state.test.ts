@@ -52,6 +52,11 @@ test('A15/A16 partial: exact zero, tiny signed D1 delta, limited quality and no 
     status: 'unchanged',
     deltaHours: 0,
     qualityStatus: 'sufficient',
+    algorithmVersion: 'sleep-metric-state-diff-v1',
+    comparisonAlgorithmVersion: 'sleep-period-comparison-v1',
+    comparisonPolicy: 'adjacent_complete_local_weeks',
+    comparisonParameters: { previousDays: 7, currentDays: 7 },
+    comparisonMethod: 'adjacent_week_medians',
     promotion: 'requires_step13_meaningfulness',
     knowledgeAsOf: 'unavailable',
   });
@@ -111,6 +116,12 @@ test('A16 partial: missing date and source transition suppress numeric claims wi
   expect(blocked.diff.quality.combined.sourceContinuity.status).toBe(
     'transition',
   );
+  expect(blocked.diff).toMatchObject({
+    comparisonAlgorithmVersion: 'sleep-period-comparison-v1',
+    comparisonPolicy: 'adjacent_complete_local_weeks',
+    comparisonParameters: { previousDays: 7, currentDays: 7 },
+    comparisonMethod: null,
+  });
 });
 
 test('A20 partial: input order, correction and Raw support identity remain auditable', () => {
@@ -167,6 +178,47 @@ test('A20 partial: input order, correction and Raw support identity remain audit
   expect(afterSwap.current.quality.provenance.rawRecordIds).toContain(
     'raw-08-replacement',
   );
+});
+
+test('A20 partial: same fact IDs and Raw support still identify changed canonical inputs', () => {
+  const facts = weeks();
+  const original = evaluateSleepMetricStatePair(facts, personId, window);
+  const changedValue = facts.map((fact, index) =>
+    index >= 7
+      ? {
+          ...fact,
+          value: { kind: 'quantity', canonicalValue: 9, canonicalUnit: 'h' },
+        }
+      : fact,
+  );
+  const recomputed = evaluateSleepMetricStatePair(
+    changedValue,
+    personId,
+    window,
+  );
+  expect(recomputed.current.identity.inputFactIds).toEqual(
+    original.current.identity.inputFactIds,
+  );
+  expect(recomputed.current.identity.factSupports).toEqual(
+    original.current.identity.factSupports,
+  );
+  expect(recomputed.current.identity.inputFingerprint).not.toBe(
+    original.current.identity.inputFingerprint,
+  );
+  expect(recomputed.diff.status).toBe('numeric_changed');
+
+  const changedVerification = facts.map((fact, index) =>
+    index === 7 ? { ...fact, verification: 'unverified' } : fact,
+  );
+  const sameMedian = evaluateSleepMetricStatePair(
+    changedVerification,
+    personId,
+    window,
+  );
+  expect(sameMedian.current.identity.inputFingerprint).not.toBe(
+    original.current.identity.inputFingerprint,
+  );
+  expect(sameMedian.diff.status).toBe('unchanged');
 });
 
 test('diff rejects incompatible person, scope and profile', () => {
@@ -242,4 +294,44 @@ test('T1 runtime captures once after read and refuses external time override', a
   } finally {
     vi.useRealTimers();
   }
+});
+
+test('T1 runtime ignores caller mutations made during the person-scoped read', async () => {
+  const request: SleepMetricStateRequest = {
+    startDate: window.startDate,
+    endDateExclusive: window.endDateExclusive,
+    asOfDate: window.asOfDate,
+  };
+  const pool = {
+    connect: async () => ({
+      query: async (sql: string, params?: unknown[]) => {
+        if (sql.includes('FROM health.fact f')) {
+          expect(params).toEqual([personId, '2026-01-01', '2026-01-15']);
+          request.asOfDate = '2026-01-20';
+          request.endDateExclusive = '2026-01-22';
+          Object.assign(request, {
+            knowledgeAsOf: '2000-01-01T00:00:00Z',
+            calculated_at: '2000-01-01T00:00:00Z',
+          });
+          return { rows: weeks() };
+        }
+        return { rows: [] };
+      },
+      release: () => undefined,
+    }),
+  } as unknown as Pool;
+  const pair = await sleepMetricStatePair(pool, personId, request);
+  expect(pair.current.identity.window).toEqual({
+    startDate: window.startDate,
+    endDateExclusive: window.endDateExclusive,
+    asOfDate: window.asOfDate,
+  });
+  expect(pair.current.quality.window).toEqual({
+    ...window,
+    calculatedAt: pair.calculatedAt,
+  });
+  expect(pair.current.quality.window.calculatedAt).toBe(pair.calculatedAt);
+  expect(pair.current.quality.window).not.toHaveProperty('knowledgeAsOf');
+  expect(pair.current.quality.window).not.toHaveProperty('calculated_at');
+  expect(pair.knowledgeAsOf).toBe('unavailable');
 });

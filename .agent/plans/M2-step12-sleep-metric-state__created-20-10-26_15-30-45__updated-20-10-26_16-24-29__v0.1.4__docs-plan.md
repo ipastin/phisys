@@ -1,11 +1,11 @@
 ---
 title: MyPhisys — M2 Step 12.1 partial sleep metric-state implementation
 created: "20-10-26 15-30-45"
-updated: "20-10-26 15-49-26"
+updated: "20-10-26 16-24-29"
 timezone: Europe/Moscow
-version: 0.1.3
-commit: "docs(plan): record Step 12.1 validation outcome"
-status: complete
+version: 0.1.4
+commit: "fix(analytics): resolve Step 12.1 review findings"
+status: in_progress
 ---
 
 # M2 Step 12.1 — partial sleep metric-state implementation
@@ -16,7 +16,7 @@ Compute two adjacent closed seven-local-date `sleep_duration` metric-state snaps
 
 ## 2. Status / Authorization
 
-`in_progress`; owner Igor Pastin authorized implementation and a draft PR on 20-10-26. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). Merge, deploy, PR #10/#12 integration, schema changes, and source-pack edits are outside this authorization.
+`in_progress`; owner Igor Pastin authorized implementation and a draft PR on 20-10-26, then explicitly authorized fixing P1/P2 findings of the independent [PR #13](https://github.com/ipastin/phisys/pull/13) review. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). Merge, deploy, PR #10/#12 integration, schema changes, and source-pack edits are outside this authorization.
 
 ## 3. Context / Sources
 
@@ -32,10 +32,12 @@ Add a Step 12.1 entrypoint and pure evaluator in existing analytics, compose Ste
 
 The runtime reads once via `readCurrentSleepFacts` (`BEGIN READ ONLY`, `SET LOCAL ROLE myphisys_analytics`, person RLS, minimum column grants), captures one UTC `calculatedAt` after read, then invokes pure evaluation. The external entrypoint accepts no timestamp override. `calculatedAt` is computation time; `knowledgeAsOf` is explicitly `unavailable`. Fact observation dates remain LocalDate. Every output retains Quality reasons, algorithm/profile versions, sorted fact IDs, and Canonical→Raw→Source support without Raw payload. `numeric_changed` is descriptive only; promotion requires Step 13 Meaningfulness with Quality, reasons, uncertainty, baseline and persistence.
 
+Review correction: snapshot identity includes a deterministic SHA-256 fingerprint of current canonical fact fields and active support fields, sorted by fact ID and Raw ID with stable object-key serialization. The digest identifies inputs without disclosing individual sleep values in the identity. The runtime copies the three accepted request dates before its asynchronous read and uses only that copy afterward. The diff records its own algorithm version plus Step 11 comparison version, policy, parameters and selected method (or `null` when blocked).
+
 ## 6. Files and dependencies
 
 - `packages/analytics/src/index.ts`: new public contract and evaluation over existing comparison; no change to Step 11 exports/callers.
-- `packages/analytics/test/quality.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases.
+- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, plus P1/P2 regressions.
 - `packages/analytics/test/integration.test.ts`: read boundary, runtime time, person isolation, correction and Raw support lifecycle.
 - `.agent/plans/…`: this living implementation plan. Existing fixtures (`packages/ingestion/test/golden.ts`), grants (`packages/database/migrations/0002_up.sql`), database reader, package export and CI are reused unchanged unless a failing acceptance case proves otherwise.
 
@@ -50,9 +52,13 @@ The runtime reads once via `readCurrentSleepFacts` (`BEGIN READ ONLY`, `SET LOCA
 
 Run `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:db` where disposable PostgreSQL is available, `pnpm build`, `git diff --check`, and exact-head GitHub CI. Golden cases: unchanged zero, tiny nonzero signed delta, limited numerical result, insufficient/blocker suppression, stable sorted identity after input order change, correction/support swap with same median but changed provenance, same T1 across snapshots/diff/Quality, no external override, incompatible person/scope/profile, no historical as-of or direct insight. Existing DB tests cover RLS, grants, read-only and Raw payload denial; new DB cases exercise the Step 12.1 entrypoint. Full A15/A16 and Step 13/14 remain `needs_review`.
 
+Review regressions on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`: focused Vitest first failed on four assertions against PR #13 head `ac33a16ad3c0b2c56b3917956e2e9ab939939825`, confirming identical identity after value change, absent comparison metadata, and request reuse after `await`. After the fix, `pnpm exec vitest run packages/analytics/test/metric-state.test.ts` passed 7/7. The cases also cover verification change without median change, blocked comparison metadata, and injected `knowledgeAsOf`/`calculated_at` during the read.
+
+Local review-fix checks on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, working tree based on `ac33a16ad3c0b2c56b3917956e2e9ab939939825`: `pnpm lint` pass; `pnpm format:check` pass; `pnpm typecheck` pass; `pnpm test` pass (analytics 31 unit cases, architecture 19); `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` pass (database 3, ingestion 13, connectors 2, analytics 9); `pnpm build` pass; `git diff --check` pass. Disposable container `myphisys-step12-review-20261020` was removed. Final committed-head CI is `needs_review` until its exact SHA and GitHub run finish; record them in PR #13 before handoff.
+
 Local evidence on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, implementation commit `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`: `pnpm lint` pass; `pnpm format:check` pass; `pnpm typecheck` pass after correcting a type-only window field; `pnpm test` pass (analytics 29 unit cases plus architecture 19); `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` pass (database 3, ingestion 13, connectors 2, analytics 9); `pnpm build` pass; staged diff check pass. Disposable container was removed. Output evidence: command results in this task and the new `metric-state.test.ts` / extended analytics DB integration test.
 
-CI evidence: [MyPhisys validation run #48](https://github.com/ipastin/phisys/actions/runs/39425042478) completed successfully for exact implementation head `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`. The `validate` job passed runtime, frozen install, lint, format, typecheck, unit/architecture tests, disposable-DB tests, build, high-severity audit and full-history secret scan. This evidence-only plan update will create a new PR head and re-trigger CI; that final run must be checked before handoff.
+Earlier CI evidence: [run #48](https://github.com/ipastin/phisys/actions/runs/39425042478) passed on implementation head `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`, and [run #49](https://github.com/ipastin/phisys/actions/runs/39425512582) passed on pre-review draft PR head `ac33a16ad3c0b2c56b3917956e2e9ab939939825`. These do not validate the review fix. Its final exact-head run is `needs_review`; the SHA, run and job results must be recorded in PR #13 before handoff.
 
 ## 9. Progress
 
@@ -60,14 +66,20 @@ CI evidence: [MyPhisys validation run #48](https://github.com/ipastin/phisys/act
 - [x] 20-10-26 15-43-42: contract and implementation; reused one read and Step 11 Quality/comparison.
 - [x] 20-10-26 15-43-42: synthetic and disposable-DB evidence passed; container removed.
 - [x] 20-10-26 15-49-26: local checks passed; commit `5aab675` and draft [PR #13](https://github.com/ipastin/phisys/pull/13) created; exact implementation-head CI run #48 passed.
+- [x] 20-10-26 16-22-02: independent review's three P1/P2 findings reproduced by failing tests, fixed in analytics, and local checks plus disposable DB tests passed.
+- [ ] Exact-head CI for the review-fix commit and draft PR metadata: `needs_review` until GitHub reports the final head.
 
 ## 10. Decision log
 
 20-10-26: The owner selected Option A over structural Observation/Symptom projection (requires new reader/grants and lifecycle semantics) and full historical state (requires schema/history and broader domain model). T1 and D1 govern this slice. Reuse Step 11 comparison/Quality instead of duplicating median and support logic; this keeps all existing blocker semantics. No Step 12 significance threshold.
 
+20-10-26 review fix: choose a SHA-256 fingerprint of sorted material canonical rows and active support fields. Alternative 1, IDs and Raw references only, fails when a mutable fact value or verification changes in place; alternative 2, embed full canonical rows in identity, makes identity verbose and exposes per-day values wherever identity is logged. Hash input includes canonical value, effective date, verification, epistemic state, conflict flag and support chain. Reuse the existing ingestion stable JSON key-order pattern and Node crypto; no dependency or schema change. Preserve exact numeric comparison semantics.
+
 ## 11. Surprises / Open questions
 
 The current mutable store cannot reconstruct historical `knowledge_as_of`. Exact duplicate receipt count remains `unavailable`. There is no Step 13/14 consumer in this repository; the Step 12.1 diff type carries a literal `promotion` gate and contract comment, while actual future consumer enforcement is `needs_review`. Docker Desktop was initially stopped, then started for disposable DB verification. One type-only field was accidentally applied to the existing baseline type, caught by `pnpm typecheck` and corrected before the final checks.
+
+The independent review found that the initial input identity omitted mutable canonical fields, the request was re-read after an asynchronous boundary, and the diff omitted comparison provenance. Those are corrected in this branch, with regression evidence above. The SHA-256 digest is an input fingerprint, not a substitute for stored historical `knowledge_as_of` or a full clinical-state audit.
 
 ## 12. Recovery / Idempotence
 
@@ -75,4 +87,4 @@ All work is isolated on this branch. Re-run pure tests without side effects; DB 
 
 ## 13. Outcomes / Retrospective
 
-Option A/T1/D1 slice implemented and verified on synthetic data. A15 and A16 are partial; A20 has executable per-fact provenance coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes. Next step: review draft PR #13 and decide later structural/historical scope; merge/deploy require separate decisions.
+Option A/T1/D1 slice and P1/P2 review fixes pass local synthetic and disposable-DB checks. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Exact-head CI for this correction remains `needs_review` until verified on the pushed SHA. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes. Next step: verify exact-head CI on draft PR #13; merge/deploy require separate decisions.
