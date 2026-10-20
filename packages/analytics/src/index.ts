@@ -763,7 +763,7 @@ export type SleepMetricStateDiff = {
     NonNullable<SleepPeriodComparisonResult['comparison']>['method'] | null;
   status: 'numeric_changed' | 'unchanged' | 'unknown' | 'incompatible';
   deltaHours: number | null;
-  qualityStatus: SleepPeriodComparisonResult['status'];
+  qualityStatus: SleepPeriodComparisonResult['status'] | null;
   quality: SleepPeriodComparisonResult['quality'] | null;
   reasons: string[];
   previous: SleepMetricStateSnapshot['identity'];
@@ -897,9 +897,11 @@ export function diffSleepMetricStateSnapshots(
     (comparison.comparison === null ||
       (previous.medianHours === comparison.comparison.previousMedianHours &&
         current.medianHours === comparison.comparison.currentMedianHours));
-  const deltaHours = compatible
-    ? (comparison.comparison?.absoluteDeltaHours ?? null)
-    : null;
+  const deltaHours =
+    compatible && comparison.comparison
+      ? comparison.comparison.currentMedianHours -
+        comparison.comparison.previousMedianHours
+      : null;
   return {
     kind: 'partial_sleep_metric_state_diff',
     algorithmVersion: 'sleep-metric-state-diff-v1',
@@ -915,7 +917,7 @@ export function diffSleepMetricStateSnapshots(
           ? 'unchanged'
           : 'numeric_changed',
     deltaHours,
-    qualityStatus: compatible ? comparison.status : 'insufficient',
+    qualityStatus: compatible ? comparison.status : null,
     quality: compatible ? structuredClone(comparison.quality) : null,
     reasons: compatible
       ? [...comparison.reasons]

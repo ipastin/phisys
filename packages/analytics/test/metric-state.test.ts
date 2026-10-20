@@ -92,6 +92,7 @@ test('A16 partial: missing date and source transition suppress numeric claims wi
   );
   expect(missing.diff.status).toBe('unknown');
   expect(missing.diff.deltaHours).toBeNull();
+  expect(missing.diff.qualityStatus).toBe('insufficient');
   expect(missing.previous.medianHours).toBeNull();
   expect(missing.current.medianHours).toBe(8);
   expect(missing.diff.reasons).toContain('insufficient_previous');
@@ -309,6 +310,46 @@ test('diff rejects incompatible person, scope and profile', () => {
     expect(incompatible.deltaHours).toBeNull();
     expect(incompatible.reasons).toContain('incompatible_snapshot_identity');
   }
+});
+
+test('standalone diff derives signed delta from checked snapshot medians', () => {
+  for (const [previousHours, currentHours] of [
+    [8, 8],
+    [8, 7],
+  ] as const) {
+    const facts = weeks(previousHours, currentHours);
+    const pair = evaluateSleepMetricStatePair(facts, personId, window);
+    const comparison = evaluateSleepPeriodComparison(facts, window);
+    comparison.comparison!.absoluteDeltaHours = 99;
+    const diff = diffSleepMetricStateSnapshots(
+      pair.previous,
+      pair.current,
+      comparison,
+    );
+    expect(diff.deltaHours).toBe(currentHours - previousHours);
+    expect(diff.status).toBe(
+      currentHours === previousHours ? 'unchanged' : 'numeric_changed',
+    );
+  }
+});
+
+test('incompatible diff does not claim insufficient Quality', () => {
+  const facts = weeks();
+  const pair = evaluateSleepMetricStatePair(facts, personId, window);
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  const incompatible = diffSleepMetricStateSnapshots(
+    pair.previous,
+    {
+      ...pair.current,
+      identity: { ...pair.current.identity, personId: 'another-person' },
+    },
+    comparison,
+  );
+  expect(pair.previous.quality.status).toBe('sufficient');
+  expect(pair.current.quality.status).toBe('sufficient');
+  expect(incompatible.status).toBe('incompatible');
+  expect(incompatible.quality).toBeNull();
+  expect(incompatible.qualityStatus).toBeNull();
 });
 
 test('standalone diff rejects comparison from a different input or Quality revision', () => {
