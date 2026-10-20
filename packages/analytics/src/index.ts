@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import {
   readCurrentSleepFacts,
   type Pool,
@@ -518,6 +519,37 @@ export async function sleepBaselineTrend(
   );
 }
 
+function fingerprintSleepInputs(
+  facts: SleepFactRow[],
+  factIds: string[],
+): string {
+  const included = new Set(factIds);
+  return createHash('sha256')
+    .update(
+      JSON.stringify(
+        facts
+          .filter((fact) => included.has(fact.id))
+          .map((fact) => ({
+            id: fact.id,
+            value: fact.value,
+            effective: fact.effective,
+            verification: fact.verification,
+            epistemic: fact.epistemic,
+            has_unresolved_conflict: fact.has_unresolved_conflict,
+            supports: [...fact.supports].sort((a, b) =>
+              a.rawId.localeCompare(b.rawId),
+            ),
+          }))
+          .sort((a, b) => a.id.localeCompare(b.id)),
+        (_, value: unknown) =>
+          value && typeof value === 'object' && !Array.isArray(value)
+            ? Object.fromEntries(Object.entries(value).sort())
+            : value,
+      ),
+    )
+    .digest('hex');
+}
+
 export type SleepPeriodComparisonResult = {
   metricId: 'sleep_duration';
   metricDefinitionVersion: string;
@@ -532,6 +564,7 @@ export type SleepPeriodComparisonResult = {
     current: QualityResult;
     combined: QualityResult;
   };
+  inputFingerprints: { previous: string; current: string };
   comparison: null | {
     method: 'adjacent_week_medians';
     previousMedianHours: number;
@@ -606,6 +639,16 @@ export function evaluateSleepPeriodComparison(
     window: { ...window },
     reasons: [...blockers, ...limitations],
     quality,
+    inputFingerprints: {
+      previous: fingerprintSleepInputs(
+        previousFacts,
+        quality.previous.provenance.factIds,
+      ),
+      current: fingerprintSleepInputs(
+        currentFacts,
+        quality.current.provenance.factIds,
+      ),
+    },
     calculatedAt: window.calculatedAt,
   };
   if (blockers.length)
@@ -740,30 +783,7 @@ function metricStateSnapshot(
 ): SleepMetricStateSnapshot {
   const inputFactIds = [...quality.provenance.factIds];
   const included = new Set(inputFactIds);
-  const inputFingerprint = createHash('sha256')
-    .update(
-      JSON.stringify(
-        facts
-          .filter((fact) => included.has(fact.id))
-          .map((fact) => ({
-            id: fact.id,
-            value: fact.value,
-            effective: fact.effective,
-            verification: fact.verification,
-            epistemic: fact.epistemic,
-            has_unresolved_conflict: fact.has_unresolved_conflict,
-            supports: [...fact.supports].sort((a, b) =>
-              a.rawId.localeCompare(b.rawId),
-            ),
-          }))
-          .sort((a, b) => a.id.localeCompare(b.id)),
-        (_, value: unknown) =>
-          value && typeof value === 'object' && !Array.isArray(value)
-            ? Object.fromEntries(Object.entries(value).sort())
-            : value,
-      ),
-    )
-    .digest('hex');
+  const inputFingerprint = fingerprintSleepInputs(facts, inputFactIds);
   return {
     kind: 'partial_sleep_metric_state',
     identity: {
@@ -832,6 +852,10 @@ export function diffSleepMetricStateSnapshots(
       JSON.stringify(comparison.quality.previous.provenance.factSupports) &&
     JSON.stringify(b.factSupports) ===
       JSON.stringify(comparison.quality.current.provenance.factSupports) &&
+    a.inputFingerprint === comparison.inputFingerprints?.previous &&
+    b.inputFingerprint === comparison.inputFingerprints?.current &&
+    isDeepStrictEqual(previous.quality, comparison.quality.previous) &&
+    isDeepStrictEqual(current.quality, comparison.quality.current) &&
     previous.medianHours ===
       (comparison.comparison?.previousMedianHours ?? null) &&
     current.medianHours === (comparison.comparison?.currentMedianHours ?? null);

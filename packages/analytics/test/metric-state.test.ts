@@ -241,6 +241,87 @@ test('diff rejects incompatible person, scope and profile', () => {
   }
 });
 
+test('standalone diff rejects comparison from a different input or Quality revision', () => {
+  const facts = weeks();
+  const original = evaluateSleepMetricStatePair(facts, personId, window);
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  expect(
+    diffSleepMetricStateSnapshots(
+      original.previous,
+      original.current,
+      comparison,
+    ).status,
+  ).toBe('unchanged');
+
+  const changedValue = evaluateSleepMetricStatePair(
+    facts.map((fact, index) =>
+      index === 7
+        ? {
+            ...fact,
+            value: { kind: 'quantity', canonicalValue: 9, canonicalUnit: 'h' },
+          }
+        : fact,
+    ),
+    personId,
+    window,
+  );
+  expect(changedValue.current.medianHours).toBe(original.current.medianHours);
+  expect(changedValue.current.identity.inputFactIds).toEqual(
+    original.current.identity.inputFactIds,
+  );
+  expect(changedValue.current.identity.factSupports).toEqual(
+    original.current.identity.factSupports,
+  );
+  const mismatchedInputs = diffSleepMetricStateSnapshots(
+    original.previous,
+    changedValue.current,
+    comparison,
+  );
+  expect(mismatchedInputs.status).toBe('incompatible');
+  expect(mismatchedInputs.deltaHours).toBeNull();
+  expect(mismatchedInputs.reasons).toContain('incompatible_snapshot_identity');
+
+  const changedVerification = evaluateSleepMetricStatePair(
+    facts.map((fact, index) =>
+      index === 7 ? { ...fact, verification: 'unverified' } : fact,
+    ),
+    personId,
+    window,
+  );
+  expect(changedVerification.current.quality.status).toBe('limited');
+  expect(
+    diffSleepMetricStateSnapshots(
+      original.previous,
+      changedVerification.current,
+      comparison,
+    ).status,
+  ).toBe('incompatible');
+
+  const changedQuality = {
+    ...original.current,
+    quality: {
+      ...original.current.quality,
+      status: 'limited' as const,
+      reasons: ['unverified_inputs'],
+    },
+  };
+  expect(
+    diffSleepMetricStateSnapshots(original.previous, changedQuality, comparison)
+      .status,
+  ).toBe('incompatible');
+
+  const comparisonWithoutFingerprints = { ...comparison };
+  delete (comparisonWithoutFingerprints as Partial<typeof comparison>)
+    .inputFingerprints;
+  expect(
+    diffSleepMetricStateSnapshots(
+      original.previous,
+      original.current,
+      comparisonWithoutFingerprints,
+    ).status,
+  ).toBe('incompatible');
+});
+
 test('T1 runtime captures once after read and refuses external time override', async () => {
   vi.useFakeTimers();
   try {
