@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 12.1 partial sleep metric-state implementation
 created: "20-10-26 15-30-45"
-updated: "20-10-26 17-02-58"
+updated: "20-10-26 17-34-44"
 timezone: Europe/Moscow
-version: 0.1.6
-commit: "docs(plan): record standalone diff P2 validation"
+version: 0.1.7
+commit: "docs(plan): record combined Quality P2 validation"
 status: complete
 ---
 
@@ -16,7 +16,7 @@ Compute two adjacent closed seven-local-date `sleep_duration` metric-state snaps
 
 ## 2. Status / Authorization
 
-`complete` for the approved Step 12.1 slice and independent-review fixes; owner Igor Pastin authorized implementation and a draft PR on 20-10-26, then explicitly authorized fixing P1/P2 findings and the repeat review's standalone-diff P2 in [PR #13](https://github.com/ipastin/phisys/pull/13). T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). Merge, deploy, PR #10/#12 integration, schema changes, and source-pack edits are outside this authorization.
+`complete` for the approved Step 12.1 slice and independent-review fixes; owner Igor Pastin authorized implementation and a draft PR on 20-10-26, then explicitly authorized fixing P1/P2 findings, the standalone-diff P2, and the confirmed remaining combined-Quality P2 in [PR #13](https://github.com/ipastin/phisys/pull/13). T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). Merge, deploy, PR #10/#12 integration, schema changes, and source-pack edits are outside this authorization.
 
 ## 3. Context / Sources
 
@@ -36,11 +36,13 @@ Review correction: snapshot identity includes a deterministic SHA-256 fingerprin
 
 Repeat-review P2 correction: standalone diff accepts comparison metadata only when its previous/current input fingerprints and full previous/current Quality match the supplied snapshots. Missing fingerprints yield `incompatible`, not an exception. This prevents a stale comparison from asserting `unchanged` or a numeric delta after a canonical input or Quality revision, even when fact IDs, support references and medians remain equal. The runtime still evaluates one coherent pair from one read.
 
+Combined-Quality P2 correction: both snapshot identities also bind a fingerprint of all comparison-relevant canonical rows (including invalid rows recorded by combined Quality, excluding valid out-of-window noise) and the full combined Quality result. A standalone diff with a comparison from a different set returns `incompatible`, a null delta and null diff Quality, so it does not expose that comparison's foreign fact IDs as the pair's Quality. Coherent blocked comparisons still return `unknown` with their Quality reasons. No reader, grants or schema change.
+
 ## 6. Files and dependencies
 
-- `packages/analytics/src/index.ts`: new public contract and evaluation over existing comparison; the standalone comparison result now carries previous/current input fingerprints and the diff validates those and Quality. No change to Step 11 exports/callers.
-- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, plus P1/P2 and standalone mixed-recomputation regressions.
-- `packages/analytics/test/integration.test.ts`: read boundary, runtime time, person isolation, correction and Raw support lifecycle.
+- `packages/analytics/src/index.ts`: existing comparison now carries previous/current/comparison-relevant input fingerprints; snapshot identity binds combined Quality, and the standalone diff validates the context. Incompatible diff Quality is null. No reader, grant or schema changes.
+- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, plus mixed-comparison and combined-Quality regressions.
+- `packages/analytics/test/integration.test.ts`: read boundary, runtime time, person isolation, correction and Raw support lifecycle; nullable incompatible Quality is handled in assertions.
 - `.agent/plans/…`: this living implementation plan. Existing fixtures (`packages/ingestion/test/golden.ts`), grants (`packages/database/migrations/0002_up.sql`), database reader, package export and CI are reused unchanged unless a failing acceptance case proves otherwise.
 
 ## 7. Milestones / Concrete steps
@@ -58,6 +60,8 @@ Review regressions on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`: focuse
 
 Standalone P2 regression on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`: the new synthetic case first failed against head `86a8c168cbd7bd03244c85c5f4b177d0b807b1f6` (`unchanged` instead of `incompatible`) when one canonical value changed but IDs, supports and median did not. After fix, focused Vitest passed 8/8. The case also covers changed verification, a Quality-only revision, missing fingerprints, and a coherent comparison that remains `unchanged`. Local `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` (analytics 32 unit cases; architecture 19), `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` (database 3, ingestion 13, connectors 2, analytics 9), `pnpm build`, and `git diff --check` passed. Disposable container was removed. The final optional-chaining edge case passed focused Vitest, typecheck and format check after the full run. [Exact code-head CI](https://github.com/ipastin/phisys/actions/runs/39435500585) passed on `0ba233afda306656504191afd102cf64d0e1c150`: frozen install, lint, format, typecheck, unit/architecture and disposable-DB tests, build, high-severity audit and full-history secret scan. Final plan-only head CI is `needs_review` until completed; record it in PR #13.
 
+Combined-Quality P2 on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`: synthetic two 14-fact sets with different additional invalid fact IDs first failed on `e569c5f1587dc7b57e1bb1755ab9257364a1b256` (`unknown` instead of `incompatible`), then passed 9/9 focused. A coherent blocked comparison remains `unknown` with its own combined Quality fact IDs; mixed comparison returns `incompatible`, null delta and null Quality. Existing out-of-window regression initially caught overbroad fingerprinting; selecting combined Quality's fact IDs restored that invariant. Local `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` passed (analytics 33 unit cases; architecture 19), `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` passed (database 3, ingestion 13, connectors 2, analytics 9), and `git diff --check` passed. `pnpm test` included a successful build; the disposable container was removed. A final nullable-Quality test assertion edit passed focused Vitest, typecheck and format check. [Exact code-head CI](https://github.com/ipastin/phisys/actions/runs/39440298730) passed on `7dd1c65f965f551297353ad35f248028b1634cd0`: frozen install, lint, format, typecheck, unit/architecture and disposable-DB tests, build, high-severity audit and full-history secret scan. Final plan-only head CI is `needs_review` until completed; record it in PR #13.
+
 Local review-fix checks on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, working tree based on `ac33a16ad3c0b2c56b3917956e2e9ab939939825`: `pnpm lint` pass; `pnpm format:check` pass; `pnpm typecheck` pass; `pnpm test` pass (analytics 31 unit cases, architecture 19); `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` pass (database 3, ingestion 13, connectors 2, analytics 9); `pnpm build` pass; `git diff --check` pass. Disposable container `myphisys-step12-review-20261020` was removed.
 
 Local evidence on 20-10-26, cwd `/Users/igorpastin/Developer/phisys`, implementation commit `5aab6751a6f9fafeced69502f6e0e20c7d8cd146`: `pnpm lint` pass; `pnpm format:check` pass; `pnpm typecheck` pass after correcting a type-only window field; `pnpm test` pass (analytics 29 unit cases plus architecture 19); `DATABASE_URL=<disposable local PostgreSQL 16> M1_DISPOSABLE_DB=1 pnpm test:db` pass (database 3, ingestion 13, connectors 2, analytics 9); `pnpm build` pass; staged diff check pass. Disposable container was removed. Output evidence: command results in this task and the new `metric-state.test.ts` / extended analytics DB integration test.
@@ -72,7 +76,8 @@ Earlier CI evidence: [run #48](https://github.com/ipastin/phisys/actions/runs/39
 - [x] 20-10-26 15-49-26: local checks passed; commit `5aab675` and draft [PR #13](https://github.com/ipastin/phisys/pull/13) created; exact implementation-head CI run #48 passed.
 - [x] 20-10-26 16-22-02: independent review's three P1/P2 findings reproduced by failing tests, fixed in analytics, and local checks plus disposable DB tests passed.
 - [x] 20-10-26 16-29-40: exact code-and-plan head `2ed6ae5` passed [CI run #39430391148](https://github.com/ipastin/phisys/actions/runs/39430391148); PR #13 body updated with base/head, checks and partial coverage. The final documentation-only head receives its own CI check before handoff; its exact SHA/run is tracked in the PR body.
-- [x] 20-10-26 17-02-58: repeat-review standalone P2 reproduced and corrected in `0ba233a`; local synthetic/full/disposable-DB checks and exact code-head [CI run #39435500585](https://github.com/ipastin/phisys/actions/runs/39435500585) passed. Final plan-only head CI and PR body update remain to be recorded before handoff.
+- [x] 20-10-26 17-02-58: repeat-review standalone P2 reproduced and corrected in `0ba233a`; local synthetic/full/disposable-DB checks and exact code-head [CI run #39435500585](https://github.com/ipastin/phisys/actions/runs/39435500585) passed. Final docs head `e569c5f` passed [CI run #39436126547](https://github.com/ipastin/phisys/actions/runs/39436126547); PR body was updated.
+- [x] 20-10-26 17-34-44: combined-Quality P2 reproduced, corrected in `7dd1c65`, and checked with local synthetic/unit/architecture/disposable-DB tests plus exact code-head [CI run #39440298730](https://github.com/ipastin/phisys/actions/runs/39440298730). Final docs head CI and PR body remain to be recorded before handoff.
 
 ## 10. Decision log
 
@@ -82,6 +87,8 @@ Earlier CI evidence: [run #48](https://github.com/ipastin/phisys/actions/runs/39
 
 20-10-26 standalone P2: carry the two existing-style input fingerprints on the Step 11 comparison result and compare them, plus full Quality, with the snapshots. Alternatives: recompute a fresh comparison from snapshots (their individual fact values are intentionally absent), or suppress all standalone numerical diff results (would break the approved public helper). This additive metadata check preserves D1 and rejects mixed recomputations. It does not add a significance threshold or expose Raw payload.
 
+20-10-26 combined-Quality P2: hash comparison-relevant facts and combined Quality into one context fingerprint shared by both snapshot identities. Alternative 1, hash every supplied row, breaks Step 11's out-of-window invariance; alternative 2, rely only on previous/current Quality, misses invalid rows held by combined Quality. On incompatibility, null diff Quality avoids attributing the rejected comparison's fact IDs to the supplied pair. No numeric or clinical semantics change.
+
 ## 11. Surprises / Open questions
 
 The current mutable store cannot reconstruct historical `knowledge_as_of`. Exact duplicate receipt count remains `unavailable`. There is no Step 13/14 consumer in this repository; the Step 12.1 diff type carries a literal `promotion` gate and contract comment, while actual future consumer enforcement is `needs_review`. Docker Desktop was initially stopped, then started for disposable DB verification. One type-only field was accidentally applied to the existing baseline type, caught by `pnpm typecheck` and corrected before the final checks.
@@ -90,10 +97,12 @@ The independent review found that the initial input identity omitted mutable can
 
 The repeat review found a remaining standalone boundary: a comparison from an older input/Quality revision could be mixed with new snapshots and still return `unchanged`. The new guard rejects that case; no known Step 12.1 consumer needs migration. Historical replay and future Step 13 consumer enforcement remain `needs_review`.
 
+The subsequent review found that combined Quality could include a malformed fact absent from both seven-date snapshot inputs. Two separate blocked recomputations could then be mixed and return `unknown` with another set's combined provenance. The new context fingerprint rejects this; the valid out-of-window regression remains unchanged. The publicly exported diff now returns null Quality on incompatibility, and there is no known consumer to migrate.
+
 ## 12. Recovery / Idempotence
 
 All work is isolated on this branch. Re-run pure tests without side effects; DB tests require `M1_DISPOSABLE_DB=1`. Do not merge or transplant PR #10/#12. Recheck remote base before PR creation; retain the branch and exact CI SHA for review.
 
 ## 13. Outcomes / Retrospective
 
-Option A/T1/D1 slice and P1/P2 review fixes, including the standalone mixed-recomputation guard, pass local synthetic and disposable-DB checks and exact code-head CI at `0ba233a`. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes. The draft PR records CI on its final documentation-only head; merge/deploy require separate decisions.
+Option A/T1/D1 slice and P1/P2 review fixes, including both standalone mixed-recomputation guards, pass local synthetic and disposable-DB checks and exact code-head CI at `7dd1c65`. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes. The draft PR records CI on its final documentation-only head; merge/deploy require separate decisions.
