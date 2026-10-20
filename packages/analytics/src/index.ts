@@ -920,8 +920,8 @@ export function diffSleepMetricStateSnapshots(
     reasons: compatible
       ? [...comparison.reasons]
       : ['incompatible_snapshot_identity'],
-    previous: a,
-    current: b,
+    previous: structuredClone(a),
+    current: structuredClone(b),
     calculatedAt: comparison.calculatedAt,
     knowledgeAsOf: 'unavailable',
     promotion: 'requires_step13_meaningfulness',

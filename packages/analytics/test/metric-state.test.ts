@@ -179,6 +179,21 @@ test('snapshot and standalone diff Quality do not share mutable provenance', () 
   expect(fresh.current.quality.reasons).not.toContain('mutated-reason');
 });
 
+test('snapshot and diff identities do not share mutable Raw support', () => {
+  const pair = evaluateSleepMetricStatePair(weeks(), personId, window);
+  pair.current.identity.factSupports[0]!.supports[0]!.rawId =
+    'mutated-snapshot-raw';
+  expect(pair.diff.current.factSupports[0]!.supports[0]!.rawId).toBe('raw-08');
+  expect(pair.diff.quality?.current.provenance.rawRecordIds).toContain(
+    'raw-08',
+  );
+
+  pair.diff.previous.factSupports[0]!.supports[0]!.rawId = 'mutated-diff-raw';
+  expect(pair.previous.identity.factSupports[0]!.supports[0]!.rawId).toBe(
+    'raw-01',
+  );
+});
+
 test('A20 partial: input order, correction and Raw support identity remain auditable', () => {
   const facts = weeks();
   const original = evaluateSleepMetricStatePair(facts, personId, window);
