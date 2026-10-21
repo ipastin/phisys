@@ -378,6 +378,46 @@ test('standalone diff rejects mutated comparison status and reasons', () => {
   }
 });
 
+test('standalone diff rejects a numeric comparison injected after a blocker', () => {
+  const facts = weeks(8, 7).map((fact, index) =>
+    index >= 7
+      ? {
+          ...fact,
+          supports: [
+            {
+              ...fact.supports[0]!,
+              sourceId: 'source-b',
+              connectorId: 'connector-b',
+            },
+          ],
+        }
+      : fact,
+  );
+  const pair = evaluateSleepMetricStatePair(facts, personId, window);
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  expect(pair.previous.medianHours).toBe(8);
+  expect(pair.current.medianHours).toBe(7);
+  expect(pair.diff.status).toBe('unknown');
+  expect(pair.diff.reasons).toContain('source_continuity_unproven');
+  expect(comparison.status).toBe('insufficient');
+  expect(comparison.comparison).toBeNull();
+
+  comparison.comparison = evaluateSleepPeriodComparison(
+    weeks(8, 7),
+    window,
+  ).comparison;
+  const diff = diffSleepMetricStateSnapshots(
+    pair.previous,
+    pair.current,
+    comparison,
+  );
+  expect(diff.status).toBe('incompatible');
+  expect(diff.deltaHours).toBeNull();
+  expect(diff.qualityStatus).toBeNull();
+  expect(diff.quality).toBeNull();
+  expect(diff.reasons).toEqual(['incompatible_snapshot_identity']);
+});
+
 test('standalone diff rejects comparison from a different input or Quality revision', () => {
   const facts = weeks();
   const original = evaluateSleepMetricStatePair(facts, personId, window);

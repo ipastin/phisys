@@ -724,6 +724,7 @@ function fingerprintComparisonContext(
     combinedQuality: comparison.quality.combined,
     status: comparison.status,
     reasons: comparison.reasons,
+    comparisonAvailable: comparison.comparison !== null,
   });
 }
 
