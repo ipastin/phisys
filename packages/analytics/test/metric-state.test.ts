@@ -432,6 +432,49 @@ test('standalone diff rejects altered comparison provenance', () => {
   }
 });
 
+test.each([
+  'previous_median',
+  'current_median',
+  'previous_quality',
+  'current_quality',
+  'metric_profile',
+  'calculated_at',
+] as const)('standalone diff rejects coordinated %s tampering', (mutation) => {
+  const facts = weeks();
+  const pair = evaluateSleepMetricStatePair(facts, personId, window);
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  const previous = structuredClone(pair.previous);
+  const current = structuredClone(pair.current);
+  expect(pair.diff.status).toBe('unchanged');
+  if (mutation === 'previous_median') {
+    previous.medianHours = 9;
+    comparison.comparison!.previousMedianHours = 9;
+  } else if (mutation === 'current_median') {
+    current.medianHours = 9;
+    comparison.comparison!.currentMedianHours = 9;
+  } else if (mutation === 'previous_quality') {
+    previous.quality.status = 'insufficient';
+    comparison.quality.previous.status = 'insufficient';
+  } else if (mutation === 'current_quality') {
+    current.quality.status = 'insufficient';
+    comparison.quality.current.status = 'insufficient';
+  } else if (mutation === 'metric_profile') {
+    previous.identity.metricDefinitionVersion = 'other-profile';
+    current.identity.metricDefinitionVersion = 'other-profile';
+    comparison.metricDefinitionVersion = 'other-profile';
+  } else {
+    previous.calculatedAt = '2000-01-01T00:00:00Z';
+    current.calculatedAt = previous.calculatedAt;
+    comparison.calculatedAt = previous.calculatedAt;
+  }
+  const diff = diffSleepMetricStateSnapshots(previous, current, comparison);
+  expect(diff.status).toBe('incompatible');
+  expect(diff.deltaHours).toBeNull();
+  expect(diff.qualityStatus).toBeNull();
+  expect(diff.quality).toBeNull();
+  expect(diff.reasons).toEqual(['incompatible_snapshot_identity']);
+});
+
 test('standalone diff rejects a numeric comparison injected after a blocker', () => {
   const facts = weeks(8, 7).map((fact, index) =>
     index >= 7
