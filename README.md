@@ -4,7 +4,7 @@
 
 Phisys is an in-development system for bringing health records, measurements, and everyday health data into a trustworthy view over time. Its intended experience helps people see what is known, what changed against their own baseline, and what may deserve a closer look. Facts, uncertainty, and provenance come before interpretation.
 
-> **Project status:** This repository contains research, specifications, and early backend packages. This repository does not yet provide an end-user app or deployment instructions.
+> **Project status:** This repository contains research, specifications, and early backend packages. It does not yet provide an end-user app or deployment instructions.
 
 ## What exists today
 
@@ -50,8 +50,8 @@ No license file is currently included in this repository.
 
 <!--
 created: "15-10-26 10-56-12"
-updated: "21-10-26 09-32-28"
+updated: "21-10-26 09-36-27"
 timezone: Europe/Moscow
-version: 0.1.0
-commit: "docs(readme): introduce Phisys and contributor quick start"
+version: 0.1.1
+commit: "docs(readme): clarify project status"
 -->
