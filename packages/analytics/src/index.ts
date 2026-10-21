@@ -727,6 +727,10 @@ function fingerprintComparisonContext(
     status: comparison.status,
     reasons: comparison.reasons,
     comparisonAvailable: comparison.comparison !== null,
+    comparisonAlgorithmVersion: comparison.algorithmVersion,
+    comparisonPolicy: comparison.policy,
+    comparisonParameters: comparison.parameters,
+    comparisonMethod: comparison.comparison?.method ?? null,
   });
 }
 

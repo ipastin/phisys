@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 12.1 partial sleep metric-state implementation
 created: "20-10-26 15-30-45"
-updated: "21-10-26 10-30-07"
+updated: "21-10-26 13-15-55"
 timezone: Europe/Moscow
-version: 0.1.14
-commit: "fix(analytics): bind person to metric-state context"
+version: 0.1.15
+commit: "fix(analytics): bind comparison provenance to snapshot context"
 status: complete
 ---
 
@@ -16,7 +16,7 @@ Compute two adjacent closed seven-local-date `sleep_duration` metric-state snaps
 
 ## 2. Status / Authorization
 
-`complete` for the approved Step 12.1 slice and review fixes; owner Igor Pastin authorized implementation and [PR #13](https://github.com/ipastin/phisys/pull/13), then explicitly authorized each P1/P2 correction. The ready review on `f1e6690` found that jointly relabeling both snapshots' `personId` could still produce a compatible numeric standalone diff. The owner authorized a minimal fix, synthetic regression, plan/PR update, and checks without merge or deploy. PR #13 returned to draft. A new head requires separate merge approval. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). PR #10/#12 integration, schema changes, and source-pack edits remain outside scope.
+`complete` for the approved Step 12.1 slice and review fixes; owner Igor Pastin authorized implementation and [PR #13](https://github.com/ipastin/phisys/pull/13), then explicitly authorized each P1/P2 correction. The owner acceptance review on `cdc0608` found that a standalone diff could publish altered comparison algorithm version, policy, parameters or method alongside `numeric_changed`. The owner authorized a minimal fix, synthetic regression, plan/PR update, and checks without merge or deploy. PR #13 remains draft. A new head requires separate merge approval. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). PR #10/#12 integration, schema changes, and source-pack edits remain outside scope.
 
 ## 3. Context / Sources
 
@@ -52,10 +52,12 @@ Blocked-comparison P1 correction: the same fingerprint now binds whether the cal
 
 Person-context P1 correction: the existing comparison-context fingerprint binds the original `personId` used to calculate the pair. Standalone diff recomputes that fingerprint with the supplied previous snapshot's person identity, after requiring both snapshots' person identities to match. Jointly relabeling both identities therefore returns `incompatible` with no numeric or Quality assertion. The fingerprint remains input identity, not an authentication signature.
 
+Comparison-provenance P2 correction: the same fingerprint also binds the comparison algorithm version, policy, parameters and selected method (or `null` when blocked). Standalone diff rejects a comparison with any of these fields changed after calculation before it can publish a numeric claim with altered provenance. This changes no comparison algorithm, public field, Quality rule or reader.
+
 ## 6. Files and dependencies
 
-- `packages/analytics/src/index.ts`: existing comparison carries previous/current/comparison-relevant input fingerprints; snapshot identity binds person, combined Quality, comparison status/reasons and numeric-aggregate availability, and the standalone diff validates the context. Incompatible diff Quality and Quality status are null. The diff derives delta from checked medians; each snapshot retains its own Quality-gated median. Compatible diff Quality and both identities are copied. No reader, grant or schema changes.
-- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, mixed-comparison and combined-Quality regressions, independently usable median cases, mutation isolation for Quality and identities, tampered comparison delta/aggregates/availability, jointly relabeled person identities, and incompatible Quality status.
+- `packages/analytics/src/index.ts`: existing comparison carries previous/current/comparison-relevant input fingerprints; snapshot identity binds person, combined Quality, comparison status/reasons, numeric-aggregate availability and published comparison provenance, and the standalone diff validates the context. Incompatible diff Quality and Quality status are null. The diff derives delta from checked medians; each snapshot retains its own Quality-gated median. Compatible diff Quality and both identities are copied. No reader, grant or schema changes.
+- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, mixed-comparison and combined-Quality regressions, independently usable median cases, mutation isolation for Quality and identities, tampered comparison delta/aggregates/availability/provenance, jointly relabeled person identities, and incompatible Quality status.
 - `packages/analytics/test/integration.test.ts`: read boundary, runtime time, person isolation, correction and Raw support lifecycle; nullable incompatible Quality is handled in assertions.
 - `.agent/plans/…`: this living implementation plan uses repository-relative cwd evidence. Existing fixtures (`packages/ingestion/test/golden.ts`), grants (`packages/database/migrations/0002_up.sql`), database reader, package export and CI are reused unchanged.
 
@@ -96,6 +98,8 @@ Blocked-comparison P1 on 21-10-26, cwd repository root (`.`), working tree based
 
 Person-context P1 on 21-10-26, cwd repository root (`.`), working tree based on `f1e6690ace55fd0bf2cd5ad3c127470a72786349`: the new synthetic regression first failed (`numeric_changed` instead of `incompatible`) when both snapshot identities were relabeled to one other person. After binding `personId` in the context fingerprint, focused Vitest passed 16/16. Local `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` (analytics 40 unit cases, architecture 19), `pnpm build`, and `git diff --check` passed. Local disposable-DB tests are `not_run` for this pure compatibility-boundary fix; exact-head CI will run them and its result belongs in PR #13.
 
+Comparison-provenance P2 on 21-10-26, cwd repository root (`.`), working tree based on `cdc0608edf75bbe4d0b83b21460de74ff3594aaa`: the synthetic regression first failed (`numeric_changed` instead of `incompatible`) after changing comparison algorithm version; the case also mutates policy, parameters and method separately. After binding all four fields, focused Vitest passed 17/17. Local `pnpm lint`, `pnpm format:check`, `pnpm typecheck` and `pnpm test` passed (analytics 41 unit cases, architecture 19; build ran within `pnpm test`). `git diff --check` is checked before commit. Separate local disposable-DB tests and standalone `pnpm build` are `not_run` for this pure compatibility-boundary fix; exact-head CI will run both, and its result belongs in PR #13.
+
 ## 9. Progress
 
 - [x] 20-10-26 15-30-45: fresh `main`, PR #10/#12, Step 11, instructions, specs and affected code inspected.
@@ -113,6 +117,7 @@ Person-context P1 on 21-10-26, cwd repository root (`.`), working tree based on 
 - [x] 20-10-26 22-40-11: ready-review comparison-aggregate P2 reproduced by a failing synthetic regression, corrected with two fingerprint fields, and passed local focused/full checks. Final exact-head CI and PR body are recorded separately before handoff.
 - [x] 21-10-26 08-35-16: ready-review blocked-comparison P1 reproduced by a failing synthetic regression, corrected with one fingerprint field, and passed local focused/full checks. Final exact-head CI and PR body are recorded separately before handoff.
 - [x] 21-10-26 10-30-07: ready-review person-context P1 reproduced by a failing synthetic regression, corrected by binding the existing fingerprint to person, and passed local focused/full checks. Final exact-head CI and PR body remain to be recorded before handoff.
+- [x] 21-10-26 13-15-55: owner-review comparison-provenance P2 reproduced by a failing synthetic regression, corrected by binding four published metadata fields, and passed local focused/full checks. Exact-head CI and PR body remain to be recorded before handoff.
 
 ## 10. Decision log
 
@@ -138,6 +143,8 @@ Person-context P1 on 21-10-26, cwd repository root (`.`), working tree based on 
 
 21-10-26 person-context P1: include the original `personId` in the existing comparison-context fingerprint and verify it from snapshot identity in standalone diff. Alternative 1, add person to Step 11 per-period input fingerprints, changes comparison metadata outside this slice. Alternative 2, introduce a separate person signature or field, expands the public contract without strengthening the local compatibility check. The existing fingerprint closes joint relabeling with no reader or schema change.
 
+21-10-26 comparison-provenance P2: bind the four published comparison metadata fields in the existing context fingerprint. Alternative 1, recompute Step 11 comparison inside standalone diff, impossible without full daily input rows and duplicates calculation. Alternative 2, publish mutable metadata without validation, lets a numeric diff claim a false algorithm or parameter set. This addition preserves the output shape and D1 behavior.
+
 ## 11. Surprises / Open questions
 
 The current mutable store cannot reconstruct historical `knowledge_as_of`. Exact duplicate receipt count remains `unavailable`. There is no Step 13/14 consumer in this repository; the Step 12.1 diff type carries a literal `promotion` gate and contract comment, while actual future consumer enforcement is `needs_review`. Docker Desktop was initially stopped, then started for disposable DB verification. One type-only field was accidentally applied to the existing baseline type, caught by `pnpm typecheck` and corrected before the final checks.
@@ -156,10 +163,12 @@ The owner acceptance review of `74b99e6` found the same cross-result alias in di
 
 The ready review on `8d1b350` found that compatible standalone diffs could trust a tampered delta and that incompatible diffs falsely labelled Quality insufficient. Both boundary behaviors are corrected without changing Step 11 calculations. A subsequent CodeRabbit comment independently identified the delta issue. The next ready review on `ba6f652` found that the comparison's mutable status/reasons could bypass compatibility checks and contradict the checked Quality. The context fingerprint now binds those aggregates. The ready review on `36a0d07` found that a blocked null comparison could be replaced with a numeric aggregate while retaining insufficient Quality; the same fingerprint now binds aggregate availability. The ready review on `f1e6690` found that jointly relabeling both snapshot person identities bypassed the standalone comparison context. The context fingerprint now binds the original person. PR #13 is draft pending new owner acceptance; no merge or deploy was performed.
 
+The owner acceptance review on `cdc0608` found that four published comparison provenance fields could be changed without invalidating a numeric standalone diff. The existing context fingerprint now binds algorithm version, policy, parameters and method. PR #13 remains draft pending exact-head CI and new owner acceptance; no merge or deploy was performed.
+
 ## 12. Recovery / Idempotence
 
 All work is isolated on this branch. Re-run pure tests without side effects; DB tests require `M1_DISPOSABLE_DB=1`. Do not merge or transplant PR #10/#12. Recheck remote base before PR creation; retain the branch and exact CI SHA for review.
 
 ## 13. Outcomes / Retrospective
 
-Option A/T1/D1 slice and P1/P2 review fixes, including independently preserved Quality-approved snapshot medians, isolated Quality and identity outputs, standalone mixed-recomputation guards, checked signed delta, nullable incompatible Quality status and bound comparison person, status, reasons and aggregate availability, pass local synthetic/full checks. The draft PR tracks exact CI for its final head. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes; merge/deploy require separate decisions.
+Option A/T1/D1 slice and P1/P2 review fixes, including independently preserved Quality-approved snapshot medians, isolated Quality and identity outputs, standalone mixed-recomputation guards, checked signed delta, nullable incompatible Quality status and bound comparison person, status, reasons, aggregate availability and published algorithm provenance, pass local synthetic/full checks. The draft PR tracks exact CI for its final head. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes; merge/deploy require separate decisions.

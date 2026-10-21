@@ -401,6 +401,37 @@ test('standalone diff rejects mutated comparison status and reasons', () => {
   }
 });
 
+test('standalone diff rejects altered comparison provenance', () => {
+  const facts = weeks(8, 7);
+  const pair = evaluateSleepMetricStatePair(facts, personId, window);
+  const mutations = [
+    (comparison: ReturnType<typeof evaluateSleepPeriodComparison>) =>
+      Object.assign(comparison, { algorithmVersion: 'other-algorithm' }),
+    (comparison: ReturnType<typeof evaluateSleepPeriodComparison>) =>
+      Object.assign(comparison, { policy: 'other-policy' }),
+    (comparison: ReturnType<typeof evaluateSleepPeriodComparison>) =>
+      Object.assign(comparison, {
+        parameters: { ...comparison.parameters, currentDays: 90 },
+      }),
+    (comparison: ReturnType<typeof evaluateSleepPeriodComparison>) =>
+      Object.assign(comparison.comparison!, { method: 'other-method' }),
+  ];
+  for (const mutate of mutations) {
+    const comparison = evaluateSleepPeriodComparison(facts, window);
+    mutate(comparison);
+    const diff = diffSleepMetricStateSnapshots(
+      pair.previous,
+      pair.current,
+      comparison,
+    );
+    expect(diff.status).toBe('incompatible');
+    expect(diff.deltaHours).toBeNull();
+    expect(diff.qualityStatus).toBeNull();
+    expect(diff.quality).toBeNull();
+    expect(diff.reasons).toEqual(['incompatible_snapshot_identity']);
+  }
+});
+
 test('standalone diff rejects a numeric comparison injected after a blocker', () => {
   const facts = weeks(8, 7).map((fact, index) =>
     index >= 7
