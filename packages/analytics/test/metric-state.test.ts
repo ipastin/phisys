@@ -335,6 +335,43 @@ test('standalone diff rejects jointly relabeled person identities', () => {
   expect(diff.reasons).toEqual(['incompatible_snapshot_identity']);
 });
 
+test.each(['scope', 'algorithmVersion'] as const)(
+  'standalone diff rejects jointly relabeled %s',
+  (field) => {
+    const facts = weeks(8, 7);
+    const pair = evaluateSleepMetricStatePair(facts, personId, window);
+    const comparison = evaluateSleepPeriodComparison(facts, window);
+    const previous = structuredClone(pair.previous);
+    const current = structuredClone(pair.current);
+    Object.assign(previous.identity, { [field]: 'forged' });
+    Object.assign(current.identity, { [field]: 'forged' });
+    const diff = diffSleepMetricStateSnapshots(previous, current, comparison);
+    expect(diff.status).toBe('incompatible');
+    expect(diff.deltaHours).toBeNull();
+    expect(diff.qualityStatus).toBeNull();
+    expect(diff.quality).toBeNull();
+  },
+);
+
+test.each(['previous', 'current'] as const)(
+  'standalone diff rejects jointly relabeled %s input fingerprint',
+  (period) => {
+    const facts = weeks(8, 7);
+    const pair = evaluateSleepMetricStatePair(facts, personId, window);
+    const comparison = evaluateSleepPeriodComparison(facts, window);
+    const previous = structuredClone(pair.previous);
+    const current = structuredClone(pair.current);
+    const snapshot = period === 'previous' ? previous : current;
+    snapshot.identity.inputFingerprint = 'forged';
+    comparison.inputFingerprints[period] = 'forged';
+    const diff = diffSleepMetricStateSnapshots(previous, current, comparison);
+    expect(diff.status).toBe('incompatible');
+    expect(diff.deltaHours).toBeNull();
+    expect(diff.qualityStatus).toBeNull();
+    expect(diff.quality).toBeNull();
+  },
+);
+
 test('standalone diff derives signed delta from checked snapshot medians', () => {
   for (const [previousHours, currentHours] of [
     [8, 8],

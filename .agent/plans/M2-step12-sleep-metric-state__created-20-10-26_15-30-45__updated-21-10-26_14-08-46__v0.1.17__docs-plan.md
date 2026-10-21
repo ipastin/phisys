@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 12.1 partial sleep metric-state implementation
 created: "20-10-26 15-30-45"
-updated: "21-10-26 13-46-38"
+updated: "21-10-26 14-08-46"
 timezone: Europe/Moscow
-version: 0.1.16
-commit: "fix(analytics): bind metric-state values and quality to context"
+version: 0.1.17
+commit: "fix(analytics): reject relabeled metric-state identities"
 status: complete
 ---
 
@@ -16,7 +16,7 @@ Compute two adjacent closed seven-local-date `sleep_duration` metric-state snaps
 
 ## 2. Status / Authorization
 
-`complete` for the approved Step 12.1 slice and review fixes; owner Igor Pastin authorized implementation and [PR #13](https://github.com/ipastin/phisys/pull/13), then explicitly authorized each P1/P2 correction. The ready review on `cdba0ce` found coordinated mutations of medians, period Quality, profile version and calculation time that could leave standalone diff compatible. The owner authorized a minimal fix, synthetic regressions, plan/PR update and checks without merge or deploy. PR #13 returned to draft. A new head requires separate merge approval. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). PR #10/#12 integration, schema changes, and source-pack edits remain outside scope.
+`complete` for the approved Step 12.1 slice and review fixes; owner Igor Pastin authorized implementation and [PR #13](https://github.com/ipastin/phisys/pull/13), then explicitly authorized each P1/P2 correction. The ready review on `639598a` found two further standalone-diff identity gaps: joint scope/algorithm relabeling and joint period-fingerprint relabeling. The owner authorized a minimal fix, synthetic regressions, plan/PR update and checks without merge or deploy. PR #13 returned to draft. A new head requires separate merge approval. T1 and D1 are confirmed in [PR #12](https://github.com/ipastin/phisys/pull/12). PR #10/#12 integration, schema changes, and source-pack edits remain outside scope.
 
 ## 3. Context / Sources
 
@@ -56,10 +56,12 @@ Comparison-provenance P2 correction: the same fingerprint also binds the compari
 
 Coordinated-mutation P1/P2 correction: the existing context fingerprint now binds all three Quality results, metric profile version, comparison calculation time and both comparison medians when present. Standalone diff already requires each snapshot Quality and numeric median to match comparison; the expanded fingerprint rejects simultaneous mutation of both sides. Blocked comparisons retain null comparison medians and independently usable snapshot medians. `absoluteDeltaHours` remains descriptive output recalculated from checked medians, so its mutation alone does not change D1 behavior.
 
+Fixed-identity P2 correction: standalone diff requires the literal `sleep_duration` scope and `sleep-metric-state-v1` snapshot algorithm before accepting matching snapshot identities. The comparison context fingerprint now also binds previous/current input fingerprints, so jointly changing a snapshot period fingerprint and the comparison's copy cannot pass compatibility. No Step 11 calculation, output field, schema or reader changes.
+
 ## 6. Files and dependencies
 
-- `packages/analytics/src/index.ts`: existing comparison carries previous/current/comparison-relevant input fingerprints; snapshot identity binds person, all period/combined Quality, metric profile, calculation time, comparison medians, status/reasons, numeric-aggregate availability and published comparison provenance, and the standalone diff validates the context. Incompatible diff Quality and Quality status are null. The diff derives delta from checked medians; each snapshot retains its own Quality-gated median. Compatible diff Quality and both identities are copied. No reader, grant or schema changes.
-- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, mixed-comparison and combined-Quality regressions, independently usable median cases, mutation isolation for Quality and identities, tampered comparison delta/aggregates/availability/provenance, coordinated median/Quality/profile/time mutations, jointly relabeled person identities, and incompatible Quality status.
+- `packages/analytics/src/index.ts`: existing comparison carries previous/current/comparison-relevant input fingerprints; snapshot identity binds person, all period/combined Quality, both period fingerprints, metric profile, calculation time, comparison medians, status/reasons, numeric-aggregate availability and published comparison provenance, and the standalone diff validates the context and fixed scope/algorithm literals. Incompatible diff Quality and Quality status are null. The diff derives delta from checked medians; each snapshot retains its own Quality-gated median. Compatible diff Quality and both identities are copied. No reader, grant or schema changes.
+- `packages/analytics/test/metric-state.test.ts`: synthetic exact/near-zero, Quality, deterministic identity, compatibility, time/consumer cases, mixed-comparison and combined-Quality regressions, independently usable median cases, mutation isolation for Quality and identities, tampered comparison delta/aggregates/availability/provenance, coordinated median/Quality/profile/time mutations, jointly relabeled person/scope/algorithm identities and period fingerprints, and incompatible Quality status.
 - `packages/analytics/test/integration.test.ts`: read boundary, runtime time, person isolation, correction and Raw support lifecycle; nullable incompatible Quality is handled in assertions.
 - `.agent/plans/…`: this living implementation plan uses repository-relative cwd evidence. Existing fixtures (`packages/ingestion/test/golden.ts`), grants (`packages/database/migrations/0002_up.sql`), database reader, package export and CI are reused unchanged.
 
@@ -104,6 +106,8 @@ Comparison-provenance P2 on 21-10-26, cwd repository root (`.`), working tree ba
 
 Coordinated-mutation P1/P2 on 21-10-26, cwd repository root (`.`), working tree based on `cdba0cebec03ecc1e13d229413e4959d9658948a`: five synthetic cases first failed before the fingerprint fix: previous/current median mutations returned `numeric_changed`, while previous Quality, profile and calculation-time mutations returned `unchanged` instead of `incompatible`. After the fix, focused Vitest passed 22/22; a sixth case also covers current Quality. Local `pnpm lint`, `pnpm format:check`, `pnpm typecheck` and `pnpm test` passed before that last test-only addition (analytics 46 unit cases, architecture 19; build ran within `pnpm test`). After the final test-only addition, focused Vitest passed 23/23, and lint, format, typecheck and `git diff --check` passed again. Separate local disposable-DB tests and standalone `pnpm build` are `not_run` for this pure compatibility-boundary fix; exact-head CI will run both, and its result belongs in PR #13.
 
+Fixed-identity P2 on 21-10-26, cwd repository root (`.`), working tree based on `639598a7786a575b36c5cc4a7768ac1ea6acc7ee`: four synthetic cases first failed (`numeric_changed` instead of `incompatible`) after joint scope, algorithm or either period-fingerprint relabeling. The minimal guard and fingerprint change passed focused Vitest 27/27; `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` (analytics 51 unit cases and architecture 19, with build), and `git diff --check` passed. Separate local disposable-DB tests and standalone `pnpm build` are `not_run` for this pure compatibility-boundary fix; exact-head CI will run both and its result belongs in PR #13.
+
 ## 9. Progress
 
 - [x] 20-10-26 15-30-45: fresh `main`, PR #10/#12, Step 11, instructions, specs and affected code inspected.
@@ -123,6 +127,7 @@ Coordinated-mutation P1/P2 on 21-10-26, cwd repository root (`.`), working tree 
 - [x] 21-10-26 10-30-07: ready-review person-context P1 reproduced by a failing synthetic regression, corrected by binding the existing fingerprint to person, and passed local focused/full checks. Final exact-head CI and PR body remain to be recorded before handoff.
 - [x] 21-10-26 13-15-55: owner-review comparison-provenance P2 reproduced by a failing synthetic regression, corrected by binding four published metadata fields, and passed local focused/full checks. Exact-head CI and PR body remain to be recorded before handoff.
 - [x] 21-10-26 13-44-18: ready-review coordinated-mutation P1/P2 reproduced by five failing synthetic regressions, corrected in one fingerprint, and passed focused/full checks before the added current-Quality case. The sixth case and final focused/static checks passed; exact-head CI and PR body remain to be recorded before handoff.
+- [x] 21-10-26 14-08-46: ready-review fixed-identity P2 cases reproduced on `639598a`, corrected in standalone compatibility checks and the existing context fingerprint; focused and full local checks passed. PR #13 is draft; exact-head CI and PR body remain to be recorded before handoff.
 
 ## 10. Decision log
 
@@ -152,6 +157,8 @@ Coordinated-mutation P1/P2 on 21-10-26, cwd repository root (`.`), working tree 
 
 21-10-26 coordinated-mutation P1/P2: bind all period Quality, metric profile, calculation time and previous/current comparison medians in the existing context fingerprint. Alternative 1, add separate guards for each mutable field, repeats comparison consistency rules and is easier to omit in a later review. Alternative 2, recompute from daily inputs inside standalone diff, impossible from snapshot summaries and expands Step 12.1. The single fingerprint addition preserves API shape, partial scope and blocked-comparison medians.
 
+21-10-26 fixed-identity P2: check the two snapshot literals directly and add previous/current input fingerprints to the existing comparison-context fingerprint. Alternative 1, hash fixed snapshot literals as extra context inputs, adds parameters to the fingerprint helper for constants already known here. Alternative 2, recompute fact fingerprints from snapshots, impossible because daily canonical values are intentionally absent. The chosen checks reject joint relabeling without changing the public output or Step 11.
+
 ## 11. Surprises / Open questions
 
 The current mutable store cannot reconstruct historical `knowledge_as_of`. Exact duplicate receipt count remains `unavailable`. There is no Step 13/14 consumer in this repository; the Step 12.1 diff type carries a literal `promotion` gate and contract comment, while actual future consumer enforcement is `needs_review`. Docker Desktop was initially stopped, then started for disposable DB verification. One type-only field was accidentally applied to the existing baseline type, caught by `pnpm typecheck` and corrected before the final checks.
@@ -174,10 +181,12 @@ The owner acceptance review on `cdc0608` found that four published comparison pr
 
 The ready review on `cdba0ce` found four more compatibility gaps under coordinated mutation: comparison/snapshot medians, period Quality, profile version and T1 calculation time. All now bind to the same original context. Six synthetic mutation scenarios cover both medians and both period Quality results, plus profile and time. PR #13 returned to draft; no merge or deploy was performed.
 
+The ready review on `639598a` found two P2 gaps: jointly relabeling both snapshots' fixed scope/algorithm, or jointly relabeling a snapshot period fingerprint and the comparison's copy, left a numeric standalone diff compatible. Fixed-literal checks and both period fingerprints in the context close these four synthetic cases. PR #13 returned to draft; no merge or deploy was performed.
+
 ## 12. Recovery / Idempotence
 
 All work is isolated on this branch. Re-run pure tests without side effects; DB tests require `M1_DISPOSABLE_DB=1`. Do not merge or transplant PR #10/#12. Recheck remote base before PR creation; retain the branch and exact CI SHA for review.
 
 ## 13. Outcomes / Retrospective
 
-Option A/T1/D1 slice and P1/P2 review fixes, including independently preserved Quality-approved snapshot medians, isolated Quality and identity outputs, standalone mixed-recomputation guards, checked signed delta, nullable incompatible Quality status and bound comparison person, period Quality, metric profile, calculation time, medians, status, reasons, aggregate availability and published algorithm provenance, pass local synthetic/full checks. The draft PR tracks exact CI for its final head. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes; merge/deploy require separate decisions.
+Option A/T1/D1 slice and P1/P2 review fixes, including independently preserved Quality-approved snapshot medians, isolated Quality and identity outputs, standalone mixed-recomputation guards, fixed scope/algorithm checks, checked signed delta, nullable incompatible Quality status and bound comparison person, period fingerprints, period Quality, metric profile, calculation time, medians, status, reasons, aggregate availability and published algorithm provenance, pass local synthetic/full checks. The draft PR tracks exact CI for its final head. A15 and A16 are partial; A20 has executable per-fact provenance and comparison metadata coverage for the sleep slice only. Full structural state, historical knowledge-as-of, Step 13 Meaningfulness, Step 14 What Changed and real-data outcome are `not_run`/`needs_review`. Future consumer enforcement remains `needs_review`. No schema, grants, Raw payload access, UI, LLM, merge or deploy changes; merge/deploy require separate decisions.

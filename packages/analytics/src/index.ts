@@ -723,6 +723,8 @@ function fingerprintComparisonContext(
   return fingerprint({
     personId,
     inputFingerprint: comparison.inputFingerprints?.comparison,
+    previousInputFingerprint: comparison.inputFingerprints?.previous,
+    currentInputFingerprint: comparison.inputFingerprints?.current,
     quality: comparison.quality,
     metricDefinitionVersion: comparison.metricDefinitionVersion,
     calculatedAt: comparison.calculatedAt,
@@ -877,7 +879,9 @@ export function diffSleepMetricStateSnapshots(
   const b = current.identity;
   const compatible =
     a.personId === b.personId &&
+    a.scope === 'sleep_duration' &&
     a.scope === b.scope &&
+    a.algorithmVersion === 'sleep-metric-state-v1' &&
     a.algorithmVersion === b.algorithmVersion &&
     a.metricDefinitionVersion === b.metricDefinitionVersion &&
     a.metricDefinitionVersion === comparison.metricDefinitionVersion &&
