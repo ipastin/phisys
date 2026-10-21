@@ -4,7 +4,7 @@
 
 Phisys is an in-development system for bringing health records, measurements, and everyday health data into a trustworthy view over time. Its intended experience helps people see what is known, what changed against their own baseline, and what may deserve a closer look. Facts, uncertainty, and provenance come before interpretation.
 
-> **Project status:** This repository contains research, specifications, and early backend packages. It does not yet provide an end-user app or deployment instructions.
+> **Project status:** This repository contains source specifications and early backend packages. It does not yet provide an end-user app.
 
 ## What exists today
 
@@ -12,11 +12,11 @@ Phisys is an in-development system for bringing health records, measurements, an
 - A PostgreSQL-backed health data foundation, canonical validation, provenance-aware ingestion, and a manual input connector.
 - Deterministic `sleep_duration` quality, baseline/trend, and adjacent-period comparison. Insufficient data is represented explicitly instead of being treated as a normal result.
 
-The broader product vision includes a user interface, a `What Changed` experience, and AI-assisted exploration. Those capabilities are **planned**, not available from this repository's `main` branch. Development and test data in this repository is synthetic.
+The broader product vision includes a user interface, a `What Changed` experience, and AI-assisted exploration. Those capabilities are **planned**, not available from this repository's `main` branch. The committed test fixtures use synthetic health data.
 
 ## Developer quick start
 
-Requirements: **Node.js 24.22.0** and **pnpm 12.13.0** (the versions pinned in [package.json](package.json)). PostgreSQL is only needed for database integration tests.
+Requirements: **Node.js 24.22.0** and **pnpm 12.13.0** (the versions pinned in [package.json](package.json)). The quick start does not need PostgreSQL; database integration tests do.
 
 ```sh
 git clone https://github.com/ipastin/phisys.git
@@ -50,8 +50,8 @@ No license file is currently included in this repository.
 
 <!--
 created: "15-10-26 10-56-12"
-updated: "21-10-26 09-36-27"
+updated: "21-10-26 09-51-10"
 timezone: Europe/Moscow
-version: 0.1.1
-commit: "docs(readme): clarify project status"
+version: 0.1.2
+commit: "docs(readme): scope status and test data claims"
 -->
