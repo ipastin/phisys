@@ -718,8 +718,10 @@ export type SleepMetricStateRequest = Omit<QualityWindow, 'calculatedAt'>;
 
 function fingerprintComparisonContext(
   comparison: SleepPeriodComparisonResult,
+  personId: string,
 ): string {
   return fingerprint({
+    personId,
     inputFingerprint: comparison.inputFingerprints?.comparison,
     combinedQuality: comparison.quality.combined,
     status: comparison.status,
@@ -893,7 +895,7 @@ export function diffSleepMetricStateSnapshots(
     a.inputFingerprint === comparison.inputFingerprints?.previous &&
     b.inputFingerprint === comparison.inputFingerprints?.current &&
     a.comparisonContextFingerprint ===
-      fingerprintComparisonContext(comparison) &&
+      fingerprintComparisonContext(comparison, a.personId) &&
     b.comparisonContextFingerprint === a.comparisonContextFingerprint &&
     isDeepStrictEqual(previous.quality, comparison.quality.previous) &&
     isDeepStrictEqual(current.quality, comparison.quality.current) &&
@@ -939,7 +941,10 @@ export function evaluateSleepMetricStatePair(
   window: QualityWindow,
 ): SleepMetricStatePair {
   const comparison = evaluateSleepPeriodComparison(facts, window);
-  const comparisonContextFingerprint = fingerprintComparisonContext(comparison);
+  const comparisonContextFingerprint = fingerprintComparisonContext(
+    comparison,
+    personId,
+  );
   const previous = metricStateSnapshot(
     personId,
     facts,

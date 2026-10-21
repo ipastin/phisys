@@ -312,6 +312,29 @@ test('diff rejects incompatible person, scope and profile', () => {
   }
 });
 
+test('standalone diff rejects jointly relabeled person identities', () => {
+  const facts = weeks(8, 7);
+  const pair = evaluateSleepMetricStatePair(facts, personId, window);
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  const otherPersonId = '019a0000-0000-7000-8000-000000000002';
+  const diff = diffSleepMetricStateSnapshots(
+    {
+      ...pair.previous,
+      identity: { ...pair.previous.identity, personId: otherPersonId },
+    },
+    {
+      ...pair.current,
+      identity: { ...pair.current.identity, personId: otherPersonId },
+    },
+    comparison,
+  );
+  expect(diff.status).toBe('incompatible');
+  expect(diff.deltaHours).toBeNull();
+  expect(diff.qualityStatus).toBeNull();
+  expect(diff.quality).toBeNull();
+  expect(diff.reasons).toEqual(['incompatible_snapshot_identity']);
+});
+
 test('standalone diff derives signed delta from checked snapshot medians', () => {
   for (const [previousHours, currentHours] of [
     [8, 8],
