@@ -25,7 +25,7 @@ pnpm install --frozen-lockfile
 pnpm test
 ```
 
-A successful `pnpm test` run completes the unit and architecture suites. It also builds the workspace; it does not run the database integration suite. For the latter, use a **disposable PostgreSQL 16 database** and the `DATABASE_URL` and `M1_DISPOSABLE_DB=1` environment variables, then run `pnpm test:db`. The [CI workflow](.github/workflows/ci.yml) shows the tested database setup.
+A successful `pnpm test` run completes the unit suite and then runs `pnpm test:architecture`, which executes `pnpm build` before the architecture suite. It does not run the database integration suite. For the latter, use a **disposable PostgreSQL 16 database** and the `DATABASE_URL` and `M1_DISPOSABLE_DB=1` environment variables, then run `pnpm test:db`. The [CI workflow](.github/workflows/ci.yml) shows the tested database setup.
 
 ## Repository map
 
@@ -50,8 +50,8 @@ No license file is currently included in this repository.
 
 <!--
 created: "15-10-26 10-56-12"
-updated: "21-10-26 09-51-10"
+updated: "22-10-26 08-22-31"
 timezone: Europe/Moscow
-version: 0.1.2
-commit: "docs(readme): scope status and test data claims"
+version: 0.1.3
+commit: "docs(readme): clarify test and build sequence"
 -->
