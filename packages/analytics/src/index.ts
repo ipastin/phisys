@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import {
   readCurrentSleepFacts,
   type Pool,
@@ -517,6 +519,41 @@ export async function sleepBaselineTrend(
   );
 }
 
+function fingerprint(value: unknown): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify(value, (_, value: unknown) =>
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? Object.fromEntries(Object.entries(value).sort())
+          : value,
+      ),
+    )
+    .digest('hex');
+}
+
+function fingerprintSleepInputs(
+  facts: SleepFactRow[],
+  factIds: string[],
+): string {
+  const included = new Set(factIds);
+  return fingerprint(
+    facts
+      .filter((fact) => included.has(fact.id))
+      .map((fact) => ({
+        id: fact.id,
+        value: fact.value,
+        effective: fact.effective,
+        verification: fact.verification,
+        epistemic: fact.epistemic,
+        has_unresolved_conflict: fact.has_unresolved_conflict,
+        supports: [...fact.supports].sort((a, b) =>
+          a.rawId.localeCompare(b.rawId),
+        ),
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  );
+}
+
 export type SleepPeriodComparisonResult = {
   metricId: 'sleep_duration';
   metricDefinitionVersion: string;
@@ -531,6 +568,7 @@ export type SleepPeriodComparisonResult = {
     current: QualityResult;
     combined: QualityResult;
   };
+  inputFingerprints: { previous: string; current: string; comparison: string };
   comparison: null | {
     method: 'adjacent_week_medians';
     previousMedianHours: number;
@@ -605,6 +643,20 @@ export function evaluateSleepPeriodComparison(
     window: { ...window },
     reasons: [...blockers, ...limitations],
     quality,
+    inputFingerprints: {
+      previous: fingerprintSleepInputs(
+        previousFacts,
+        quality.previous.provenance.factIds,
+      ),
+      current: fingerprintSleepInputs(
+        currentFacts,
+        quality.current.provenance.factIds,
+      ),
+      comparison: fingerprintSleepInputs(
+        facts,
+        quality.combined.provenance.factIds,
+      ),
+    },
     calculatedAt: window.calculatedAt,
   };
   if (blockers.length)
@@ -660,4 +712,311 @@ export async function sleepPeriodComparison(
     ),
     window,
   );
+}
+
+export type SleepMetricStateRequest = Omit<QualityWindow, 'calculatedAt'>;
+
+function fingerprintComparisonContext(
+  comparison: SleepPeriodComparisonResult,
+  personId: string,
+): string {
+  return fingerprint({
+    personId,
+    inputFingerprint: comparison.inputFingerprints?.comparison,
+    previousInputFingerprint: comparison.inputFingerprints?.previous,
+    currentInputFingerprint: comparison.inputFingerprints?.current,
+    quality: comparison.quality,
+    metricDefinitionVersion: comparison.metricDefinitionVersion,
+    calculatedAt: comparison.calculatedAt,
+    status: comparison.status,
+    reasons: comparison.reasons,
+    comparisonAvailable: comparison.comparison !== null,
+    previousMedianHours: comparison.comparison?.previousMedianHours ?? null,
+    currentMedianHours: comparison.comparison?.currentMedianHours ?? null,
+    comparisonAlgorithmVersion: comparison.algorithmVersion,
+    comparisonPolicy: comparison.policy,
+    comparisonParameters: comparison.parameters,
+    comparisonMethod: comparison.comparison?.method ?? null,
+  });
+}
+
+export type SleepMetricStateSnapshot = {
+  kind: 'partial_sleep_metric_state';
+  identity: {
+    personId: string;
+    scope: 'sleep_duration';
+    window: { startDate: string; endDateExclusive: string; asOfDate: string };
+    algorithmVersion: 'sleep-metric-state-v1';
+    metricDefinitionVersion: string;
+    inputFactIds: string[];
+    inputFingerprint: string;
+    comparisonContextFingerprint: string;
+    factSupports: QualityResult['provenance']['factSupports'];
+  };
+  observedAt: { factId: string; effective: unknown }[];
+  medianHours: number | null;
+  quality: QualityResult;
+  structuralDomains: {
+    conditions: 'unavailable';
+    medications: 'unavailable';
+    allergies: 'unavailable';
+    goals: 'unavailable';
+    recentEvents: 'unavailable';
+    conflicts: 'unavailable';
+  };
+  calculatedAt: string;
+  knowledgeAsOf: 'unavailable';
+};
+
+export type SleepMetricStateDiff = {
+  kind: 'partial_sleep_metric_state_diff';
+  algorithmVersion: 'sleep-metric-state-diff-v1';
+  comparisonAlgorithmVersion: SleepPeriodComparisonResult['algorithmVersion'];
+  comparisonPolicy: SleepPeriodComparisonResult['policy'];
+  comparisonParameters: SleepPeriodComparisonResult['parameters'];
+  comparisonMethod:
+    NonNullable<SleepPeriodComparisonResult['comparison']>['method'] | null;
+  status: 'numeric_changed' | 'unchanged' | 'unknown' | 'incompatible';
+  deltaHours: number | null;
+  qualityStatus: SleepPeriodComparisonResult['status'] | null;
+  quality: SleepPeriodComparisonResult['quality'] | null;
+  reasons: string[];
+  previous: SleepMetricStateSnapshot['identity'];
+  current: SleepMetricStateSnapshot['identity'];
+  /** Computation time only; it cannot answer historical knowledge-as-of queries. */
+  calculatedAt: string;
+  knowledgeAsOf: 'unavailable';
+  /** numeric_changed is descriptive, never an InsightCandidate or What Changed item. Step 13 must assess Quality, reasons, uncertainty, baseline and persistence. */
+  promotion: 'requires_step13_meaningfulness';
+};
+
+export type SleepMetricStatePair = {
+  kind: 'partial_sleep_metric_state_pair';
+  previous: SleepMetricStateSnapshot;
+  current: SleepMetricStateSnapshot;
+  diff: SleepMetricStateDiff;
+  calculatedAt: string;
+  knowledgeAsOf: 'unavailable';
+};
+
+const unavailableStructuralDomains = {
+  conditions: 'unavailable',
+  medications: 'unavailable',
+  allergies: 'unavailable',
+  goals: 'unavailable',
+  recentEvents: 'unavailable',
+  conflicts: 'unavailable',
+} as const;
+
+function metricStateSnapshot(
+  personId: string,
+  facts: SleepFactRow[],
+  quality: QualityResult,
+  comparisonContextFingerprint: string,
+): SleepMetricStateSnapshot {
+  const inputFactIds = [...quality.provenance.factIds];
+  const included = new Set(inputFactIds);
+  const inputFingerprint = fingerprintSleepInputs(facts, inputFactIds);
+  const numericAllowed =
+    quality.status !== 'insufficient' &&
+    quality.sourceContinuity.status === 'continuous' &&
+    quality.sourceContinuity.connectorIds.length === 1 &&
+    quality.sameDayExtraFactCount === 0 &&
+    quality.excludedFactIds.length === 0;
+  const medianHours = numericAllowed
+    ? median(
+        facts
+          .filter((fact) => included.has(fact.id))
+          .map(
+            (fact) => (fact.value as { canonicalValue: number }).canonicalValue,
+          )
+          .sort((a, b) => a - b),
+      )
+    : null;
+  return {
+    kind: 'partial_sleep_metric_state',
+    identity: {
+      personId,
+      scope: 'sleep_duration',
+      window: {
+        startDate: quality.window.startDate,
+        endDateExclusive: quality.window.endDateExclusive,
+        asOfDate: quality.window.asOfDate,
+      },
+      algorithmVersion: 'sleep-metric-state-v1',
+      metricDefinitionVersion: quality.metricDefinitionVersion,
+      inputFactIds,
+      inputFingerprint,
+      comparisonContextFingerprint,
+      factSupports: quality.provenance.factSupports.map(
+        ({ factId, supports }) => ({
+          factId,
+          supports: supports.map((support) => ({ ...support })),
+        }),
+      ),
+    },
+    observedAt: facts
+      .filter((fact) => included.has(fact.id))
+      .map((fact) => ({
+        factId: fact.id,
+        effective: structuredClone(fact.effective),
+      }))
+      .sort((a, b) => a.factId.localeCompare(b.factId)),
+    medianHours,
+    quality: structuredClone(quality),
+    structuralDomains: { ...unavailableStructuralDomains },
+    calculatedAt: quality.calculatedAt,
+    knowledgeAsOf: 'unavailable',
+  };
+}
+
+export function diffSleepMetricStateSnapshots(
+  previous: SleepMetricStateSnapshot,
+  current: SleepMetricStateSnapshot,
+  comparison: SleepPeriodComparisonResult,
+): SleepMetricStateDiff {
+  const a = previous.identity;
+  const b = current.identity;
+  const compatible =
+    a.personId === b.personId &&
+    a.scope === 'sleep_duration' &&
+    a.scope === b.scope &&
+    a.algorithmVersion === 'sleep-metric-state-v1' &&
+    a.algorithmVersion === b.algorithmVersion &&
+    a.metricDefinitionVersion === b.metricDefinitionVersion &&
+    a.metricDefinitionVersion === comparison.metricDefinitionVersion &&
+    a.window.endDateExclusive === b.window.startDate &&
+    a.window.startDate === comparison.quality.previous.window.startDate &&
+    a.window.endDateExclusive ===
+      comparison.quality.previous.window.endDateExclusive &&
+    a.window.asOfDate === comparison.quality.previous.window.asOfDate &&
+    b.window.startDate === comparison.quality.current.window.startDate &&
+    b.window.endDateExclusive ===
+      comparison.quality.current.window.endDateExclusive &&
+    b.window.asOfDate === comparison.quality.current.window.asOfDate &&
+    previous.calculatedAt === current.calculatedAt &&
+    current.calculatedAt === comparison.calculatedAt &&
+    JSON.stringify(a.inputFactIds) ===
+      JSON.stringify(comparison.quality.previous.provenance.factIds) &&
+    JSON.stringify(b.inputFactIds) ===
+      JSON.stringify(comparison.quality.current.provenance.factIds) &&
+    JSON.stringify(a.factSupports) ===
+      JSON.stringify(comparison.quality.previous.provenance.factSupports) &&
+    JSON.stringify(b.factSupports) ===
+      JSON.stringify(comparison.quality.current.provenance.factSupports) &&
+    a.inputFingerprint === comparison.inputFingerprints?.previous &&
+    b.inputFingerprint === comparison.inputFingerprints?.current &&
+    a.comparisonContextFingerprint ===
+      fingerprintComparisonContext(comparison, a.personId) &&
+    b.comparisonContextFingerprint === a.comparisonContextFingerprint &&
+    isDeepStrictEqual(previous.quality, comparison.quality.previous) &&
+    isDeepStrictEqual(current.quality, comparison.quality.current) &&
+    (comparison.comparison === null ||
+      (previous.medianHours === comparison.comparison.previousMedianHours &&
+        current.medianHours === comparison.comparison.currentMedianHours));
+  const deltaHours =
+    compatible && comparison.comparison
+      ? comparison.comparison.currentMedianHours -
+        comparison.comparison.previousMedianHours
+      : null;
+  return {
+    kind: 'partial_sleep_metric_state_diff',
+    algorithmVersion: 'sleep-metric-state-diff-v1',
+    comparisonAlgorithmVersion: comparison.algorithmVersion,
+    comparisonPolicy: comparison.policy,
+    comparisonParameters: { ...comparison.parameters },
+    comparisonMethod: comparison.comparison?.method ?? null,
+    status: !compatible
+      ? 'incompatible'
+      : deltaHours === null
+        ? 'unknown'
+        : deltaHours === 0
+          ? 'unchanged'
+          : 'numeric_changed',
+    deltaHours,
+    qualityStatus: compatible ? comparison.status : null,
+    quality: compatible ? structuredClone(comparison.quality) : null,
+    reasons: compatible
+      ? [...comparison.reasons]
+      : ['incompatible_snapshot_identity'],
+    previous: structuredClone(a),
+    current: structuredClone(b),
+    calculatedAt: comparison.calculatedAt,
+    knowledgeAsOf: 'unavailable',
+    promotion: 'requires_step13_meaningfulness',
+  };
+}
+
+export function evaluateSleepMetricStatePair(
+  facts: SleepFactRow[],
+  personId: string,
+  window: QualityWindow,
+): SleepMetricStatePair {
+  const comparison = evaluateSleepPeriodComparison(facts, window);
+  const comparisonContextFingerprint = fingerprintComparisonContext(
+    comparison,
+    personId,
+  );
+  const previous = metricStateSnapshot(
+    personId,
+    facts,
+    comparison.quality.previous,
+    comparisonContextFingerprint,
+  );
+  const current = metricStateSnapshot(
+    personId,
+    facts,
+    comparison.quality.current,
+    comparisonContextFingerprint,
+  );
+  return {
+    kind: 'partial_sleep_metric_state_pair',
+    previous,
+    current,
+    diff: diffSleepMetricStateSnapshots(previous, current, comparison),
+    calculatedAt: window.calculatedAt,
+    knowledgeAsOf: 'unavailable',
+  };
+}
+
+export async function sleepMetricStatePair(
+  pool: Pool,
+  personId: string,
+  request: SleepMetricStateRequest,
+): Promise<SleepMetricStatePair> {
+  if (
+    Object.keys(request).some(
+      (key) => !['startDate', 'endDateExclusive', 'asOfDate'].includes(key),
+    )
+  )
+    throw new Error('Only window dates may be supplied');
+  const dates = {
+    startDate: request.startDate,
+    endDateExclusive: request.endDateExclusive,
+    asOfDate: request.asOfDate,
+  };
+  const start = day(dates.startDate);
+  const end = day(dates.endDateExclusive);
+  const asOf = day(dates.asOfDate);
+  if (
+    (end - start) / dayMs !== sleepDuration.comparisonParameters.currentDays ||
+    asOf < end
+  )
+    throw new Error('Current window must be 7 closed local dates');
+  const previousStart = new Date(
+    start - sleepDuration.comparisonParameters.previousDays * dayMs,
+  )
+    .toISOString()
+    .slice(0, 10);
+  const facts = await readCurrentSleepFacts(
+    pool,
+    personId,
+    previousStart,
+    dates.endDateExclusive,
+  );
+  const calculatedAt = new Date().toISOString();
+  return evaluateSleepMetricStatePair(facts, personId, {
+    ...dates,
+    calculatedAt,
+  });
 }
