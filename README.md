@@ -16,7 +16,7 @@ Phisys is designed around everyday questions about your own health history. The 
 | See what has changed | A Today overview centers on **What Changed**: changes worth exploring, new health events, areas that remain stable, and gaps in the available data. |
 | Understand a measurement in context | Explore its history, compare periods, and see how it relates to your recent personal baseline, with data quality and sources visible. Your usual range is kept distinct from a clinical reference range. |
 | Ask questions about your records | **Ask Phisys** is the planned conversational entry point for explaining a selected result or change using relevant records. Answers should show their sources, the personal context used, and what remains uncertain. |
-| Record what you notice | Add symptoms and manual measurements. Conversational entries should become a structured preview that you can check and confirm before they are saved. |
+| Record what you notice | Add symptoms and manual measurements. When you describe an entry in conversation, Phisys should show the proposed record for you to review and confirm before saving. |
 
 The initial data plan includes sleep, steps, heart rate, and weight from Android Health Connect, alongside manual observations, symptoms, and text-based PDF lab reports. Later plans include preparing an appointment brief with relevant changes, records, and questions to discuss with a clinician.
 
@@ -24,15 +24,15 @@ The initial data plan includes sleep, steps, heart rate, and weight from Android
 
 The intended flow is **What Changed → Explore → Ask Phisys**. For example, once sleep records are available:
 
-1. **Notice:** What Changed would summarize a change in sleep duration against your recent baseline, or make clear that there is too little data to compare reliably.
-2. **Explore:** Open the change to inspect the dates, comparison period, measurements, missing nights, and source records behind it.
+1. **Notice:** What Changed would highlight a meaningful change in sleep duration against your recent baseline, report that no meaningful change was found, or flag insufficient data for a reliable comparison.
+2. **Explore:** If a change is shown, open it to inspect the dates, comparison period, measurements, missing nights, and source records behind it.
 3. **Ask:** Ask what else was recorded during that period. An explanation should distinguish observed facts from possible explanations; events occurring together do not establish a cause.
 
 This is an illustrative product scenario. The current repository implements parts of the sleep analysis behind it; the complete interface and conversational flow are still planned.
 
 ### Planned apps and access
 
-The Personal Beta is planned for **Android first**, as the main place to connect health data, check changes, and record observations. A **web companion** is planned for exploring history and organizing records on a larger screen. iOS is a later platform expansion. Widgets, notifications, and watch companions have narrower planned roles, such as noticing a change or capturing an observation. See the [surface strategy](docs/project-spec/v0.4.0/17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-10-10-26_04-03-47__v0.4.0.md) for the delivery roadmap.
+The first beta is planned for **Android**, as the main place to connect health data, check changes, and record observations. A **web companion** is planned for exploring history and organizing records on a larger screen. iOS is a later platform expansion. Widgets, notifications, and watch companions have narrower planned roles, such as noticing a change or capturing an observation. See the [surface strategy](docs/project-spec/v0.4.0/17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-10-10-26_04-03-47__v0.4.0.md) for the delivery roadmap.
 
 ## What exists today
 
@@ -78,8 +78,8 @@ No license file is currently included in this repository.
 
 <!--
 created: "15-10-26 10-56-12"
-updated: "22-10-26 08-54-18"
+updated: "22-10-26 09-02-19"
 timezone: Europe/Moscow
-version: 0.2.0
-commit: "docs(readme): explain product experience and planned use cases"
+version: 0.2.1
+commit: "docs(readme): clarify planned outcomes and user wording"
 -->
