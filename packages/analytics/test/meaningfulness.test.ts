@@ -152,6 +152,37 @@ test('partial A17: reference coverage and a reference-only blocker explain an ab
     });
 });
 
+test('a malformed reference-only date blocks baseline without changing the two-week diff', () => {
+  const facts = series();
+  const cleanDiff = evaluateSleepMetricStatePair(
+    facts.slice(21),
+    personId,
+    window,
+  ).diff;
+  facts[8]!.effective = { kind: 'local_date', value: '2026-01-09x' };
+  const decision = evaluate(facts);
+  expect(decision.diff).toEqual(cleanDiff);
+  expect(decision.diff).toMatchObject({
+    status: 'numeric_changed',
+    deltaHours: -1,
+  });
+  expect(decision.reasonCodes).toEqual(['baseline_unavailable']);
+  expect(decision.baselineEvidence?.result).toMatchObject({
+    baseline: null,
+    quality: { combined: { excludedFactIds: ['fact-09'] } },
+  });
+
+  const withinComparison = series();
+  withinComparison[24]!.effective = {
+    kind: 'local_date',
+    value: '2026-01-25x',
+  };
+  expect(evaluate(withinComparison)).toMatchObject({
+    diff: { status: 'unknown', deltaHours: null },
+    baselineEvidence: null,
+  });
+});
+
 test('partial A20: sorted evidence identifies corrections and support swaps even when medians agree', () => {
   const facts = series();
   const before = evaluate(facts);
@@ -187,6 +218,19 @@ test('partial A20: sorted evidence identifies corrections and support swaps even
     swapped.baselineEvidence?.result.quality.reference.provenance.rawRecordIds,
   ).toContain('raw-replacement');
   expect(swapped.reasonCodes).toEqual(before.reasonCodes);
+});
+
+test('runtime rejects a reference start outside four-digit years before opening a connection', async () => {
+  const connect = vi.fn();
+  const pool = { connect } as unknown as Pool;
+  await expect(
+    sleepMeaningfulness(pool, personId, {
+      startDate: '0000-01-15',
+      endDateExclusive: '0000-01-22',
+      asOfDate: '0000-01-22',
+    }),
+  ).rejects.toThrow('Sleep baseline reference start must be a four-digit date');
+  expect(connect).not.toHaveBeenCalled();
 });
 
 test('runtime derives both analyses after one scoped read and rejects substituted inputs', async () => {

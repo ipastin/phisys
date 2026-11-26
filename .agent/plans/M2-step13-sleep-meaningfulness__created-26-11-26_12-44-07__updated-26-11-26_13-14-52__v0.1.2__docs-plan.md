@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — M2 Step 13 sleep Meaningfulness gate
 created: "26-11-26 12-44-07"
-updated: "26-11-26 12-52-05"
+updated: "26-11-26 13-14-52"
 timezone: Europe/Moscow
-version: 0.1.1
-commit: "docs(plan): record partial sleep meaningfulness implementation"
+version: 0.1.2
+commit: "fix(analytics): preserve sleep comparison window in meaningfulness"
 status: in_progress
 ---
 
@@ -17,6 +17,8 @@ Return a reproducible internal hold decision for a Step 12.1 sleep diff, with a 
 ## 2. Status / Authorization
 
 The owner authorized the sleep evidence gate and a separate draft PR on 26-11-26. Positive promotion policy, Step 14, user-facing claims, merge and deploy require separate decisions.
+
+The owner authorized the P2/P3 corrections from the independent review of [draft PR #16](https://github.com/ipastin/phisys/pull/16) at `09548d918e258535677ad85102af7c7ad9a711dc`.
 
 ## 3. Context / Sources
 
@@ -31,6 +33,8 @@ One internal decision for `sleep_duration`. Partial A17 and slice-specific A20 e
 ## 5. Invariants / Architecture impact
 
 One person-scoped read covers 28 reference and 7 current local dates. The runtime validates and copies the request before awaiting the read, captures the trusted UTC instant once after it, and derives both analyses from those rows. Step 12.1 keeps its 14-date query and exact D1 behavior. `knowledgeAsOf` remains `unavailable`. Reader, RLS, grants, read-only transaction and Raw payload denial are inherited. The pure fixture path assumes rows already scoped by the trusted caller.
+
+From the shared read, Step 13 passes only the rows matching the Step 12.1 reader's local-date interval to the diff evaluator. The baseline evaluates the full reference and current set. The runtime rejects a reference start outside four-digit years before connecting to PostgreSQL.
 
 ## 6. Files and dependencies
 
@@ -49,11 +53,14 @@ Synthetic cases cover zero, tiny delta with usable baseline, isolated outlier, s
 - [x] 26-11-26 Europe/Moscow: verified remote base, CI and PR #13 findings, checked sources and created implementation branch.
 - [x] 26-11-26 Europe/Moscow: implemented the hold policy, shared-input calculation and synthetic acceptance cases.
 - [x] 26-11-26 Europe/Moscow, cwd repository root: lint, format, typecheck, full tests (58 analytics unit, 19 architecture), build and disposable PostgreSQL 16 suite (28 tests across database, ingestion, connectors and analytics) passed against the implementation in this revision. Local Node 24.17.0 and pnpm 12.13.0. Fixed a test-only lint error before the successful full run.
-- Draft PR body records exact head and CI evidence for the published revision.
+- [x] 26-11-26 Europe/Moscow, repository root: both synthetic regressions failed against `09548d918e258535677ad85102af7c7ad9a711dc` before the fix. The reference-only malformed date suppressed the diff, and a date range with an unsupported reference start reached the connection path. After the fix, the focused analytics suites passed 60/60, including unchanged D1/provenance within the two weeks, blocking a malformed date inside those weeks, and rejecting the unsupported reference start before connecting.
+- [x] 26-11-26 13:14 Europe/Moscow, repository root: `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` (60 analytics unit and 19 architecture), `pnpm build`, `git diff --check` and `pnpm test:db` (28 tests on disposable PostgreSQL 16) passed for these corrections. The draft PR records the published SHA and GitHub CI run.
 
 ## 10. Decision log
 
 26-11-26: compose from one scoped read. Joining separately retrieved analyses by time or identity labels cannot prove they observed the same revision. Positive promotion would require approved Quality and magnitude policy, evidence for persistence, baseline and source handling, and an explicit owner decision.
+
+26-11-26: P2/P3 review follow-up keeps the reader and timestamp path intact. Filter only the comparison input by its reader bounds. A baseline-only malformed row remains in baseline Quality and provenance. Guard the computed reference start before I/O.
 
 ## 11. Surprises / Open questions
 

@@ -1059,7 +1059,27 @@ export function evaluateSleepMeaningfulness(
   personId: string,
   window: QualityWindow,
 ): SleepMeaningfulnessDecision {
-  const { diff } = evaluateSleepMetricStatePair(facts, personId, window);
+  const previousStart = new Date(
+    day(window.startDate) -
+      sleepDuration.comparisonParameters.previousDays * dayMs,
+  )
+    .toISOString()
+    .slice(0, 10);
+  // Match the Step 12 reader's scope and keep malformed dates inside that scope.
+  const comparisonFacts = facts.filter(({ effective }) => {
+    const date = effective as { kind?: unknown; value?: unknown } | null;
+    return (
+      date?.kind === 'local_date' &&
+      typeof date.value === 'string' &&
+      date.value >= previousStart &&
+      date.value < window.endDateExclusive
+    );
+  });
+  const { diff } = evaluateSleepMetricStatePair(
+    comparisonFacts,
+    personId,
+    window,
+  );
   const reasonCodes: SleepMeaningfulnessReason[] = [];
   let baselineEvidence: SleepMeaningfulnessDecision['baselineEvidence'] = null;
   switch (diff.status) {
@@ -1124,7 +1144,9 @@ export async function sleepMeaningfulness(
     start - sleepDuration.baselineParameters.referenceDays * dayMs,
   )
     .toISOString()
-    .slice(0, 10);
+    .split('T')[0]!;
+  if (referenceStart.length !== 10)
+    throw new Error('Sleep baseline reference start must be a four-digit date');
   const facts = await readCurrentSleepFacts(
     pool,
     personId,
