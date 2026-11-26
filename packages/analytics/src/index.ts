@@ -1156,8 +1156,11 @@ function evaluateSleepPersistence(
   let direction: 'above' | 'below' | null = null;
   let startDate = '';
   let length = 0;
+  // Subtracting decimal hours and computing MAD can round on opposite sides of equality.
+  const roundingTolerance =
+    2 * Number.EPSILON * Math.max(1, medianHours, bandHours);
   for (const { date, deviation } of days) {
-    if (Math.abs(deviation) < bandHours) {
+    if (bandHours - Math.abs(deviation) > roundingTolerance) {
       direction = null;
       continue;
     }

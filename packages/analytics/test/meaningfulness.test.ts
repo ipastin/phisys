@@ -457,6 +457,39 @@ test('A13-13: reference variation widens the band instead of counting noise', ()
   });
 });
 
+test.each([
+  { median: 8.2, hours: 7.7, side: 'below', observed: true },
+  { median: 8.2, hours: 7.700001, side: 'below', observed: false },
+  { median: 8.2, hours: 7.699999, side: 'below', observed: true },
+  { median: 7.7, hours: 8.2, side: 'above', observed: true },
+  { median: 7.7, hours: 8.199999, side: 'above', observed: false },
+  { median: 7.7, hours: 8.200001, side: 'above', observed: true },
+  { median: 5.5, hours: 4.7, side: 'below', observed: true },
+  { median: 5.5, hours: 6.3, side: 'above', observed: true },
+] as const)(
+  'A13 decimal boundary: baseline $median h and four days of $hours h',
+  ({ median, hours, side, observed }) => {
+    const reference = Array.from({ length: 28 }, (_, i) =>
+      median === 5.5 ? (i % 2 === 0 ? 5.1 : 5.9) : median,
+    );
+    const decision = evaluate(
+      series([hours, hours, hours, hours, median, median, median], reference),
+    );
+    expect(decision.status).toBe('held');
+    expect(decision.baselineEvidence.result.status).toBe('sufficient');
+    expect(decision.persistence.bandHours).toBeCloseTo(
+      median === 5.5 ? 0.8 : 0.5,
+    );
+    expect(decision.persistence).toMatchObject({
+      status: observed ? 'pattern_observed' : 'pattern_not_observed',
+      reasonCode: observed
+        ? 'persistence_run_observed'
+        : 'persistence_run_not_observed',
+      directions: { [side]: { qualifyingDays: observed ? 4 : 0 } },
+    });
+  },
+);
+
 test('A13-14: equal weekly medians can coexist with current-week persistence', () => {
   const reference = [...Array<number>(21).fill(8), ...Array<number>(7).fill(7)];
   const decision = evaluate(series(7, reference));

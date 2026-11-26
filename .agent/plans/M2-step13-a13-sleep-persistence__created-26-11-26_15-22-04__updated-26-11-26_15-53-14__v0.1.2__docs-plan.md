@@ -1,10 +1,10 @@
 ---
 title: MyPhisys — partial A13 sleep persistence evidence
 created: "26-11-26 15-22-04"
-updated: "26-11-26 15-28-19"
+updated: "26-11-26 15-53-14"
 timezone: Europe/Moscow
-version: 0.1.1
-commit: "feat(analytics): add partial sleep persistence evidence"
+version: 0.1.2
+commit: "fix(analytics): preserve inclusive sleep persistence boundary"
 status: in_progress
 ---
 
@@ -42,17 +42,21 @@ Implement evaluation and gate diagnostics → verify approved synthetic cases an
 
 Approved matrix A13-01–17: run versus alternating and interrupted days with equal medians, isolated outlier, signed directions, 6/7 missing, 23 versus 22 reference days, both source transition variants, unverified and structural blockers, MAD zero and nonzero, equal weekly medians, value and support revisions, and malformed reference-only date. Assert outcomes and reason codes. Retain tests for one read, shared T1, caller override rejection, person isolation, D1 and input provenance. Run lint, format, typecheck, unit/architecture, disposable PostgreSQL, build and exact PR-head CI.
 
+P2 follow-up checks decimal-hour equality for the 0.5 h floor and a band derived from 2 × MAD, above and below baseline. Near-threshold cases on each side of the floor confirm the comparison still rejects values inside and counts values outside.
+
 ## 9. Progress
 
 - [x] 26-11-26 Europe/Moscow: verified remote base and CI, prior review threads and owner scope, then created `codex/m2-a13-sleep-persistence`.
 - [x] 26-11-26 15-28-19 Europe/Moscow, repository root: all 17 golden cases in the [meaningfulness suite](../../packages/analytics/test/meaningfulness.test.ts) are exercised, including variants for exact band equality, source transitions and unusable Quality. Focused and full suites passed: 77 analytics unit, 19 architecture and 28 disposable PostgreSQL tests. `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:db`, `pnpm build` and `git diff --check` passed. Local Node 24.17.0 and pnpm 12.13.0.
-- The draft PR records the published SHA, verification date and CI run. Independent review remains `needs_review`.
+- [x] 26-11-26 15-53-14 Europe/Moscow, repository root: four equality cases failed against reviewed head `154d7f2db30cd58aaa4da41897fa46ce75ec9120` before the correction. All eight focused boundary cases passed after the fix. Full local checks passed: 85 analytics unit, 19 architecture and 28 disposable PostgreSQL tests, lint, format, typecheck, build and diff check. The [draft PR](https://github.com/ipastin/phisys/pull/17) records the published SHA and CI run. Follow-up review remains `needs_review`.
 
 ## 10. Decision log
 
 26-11-26: owner chose the four-date continuous run over four qualifying dates in any order. Preserve baseline v1's 21-day numeric minimum and require sufficient Quality for A13, currently at least 23 of 28 reference days. Connector continuity is the evidence available from the current reader.
 
 26-11-26: expose one baseline evaluation for every decision because A13 needs its Quality even for a blocked or unchanged diff. Baseline numeric values can still be unavailable. Replace the previous persistence sentinel with an explicit versioned outcome. The held gate's former placeholder now reports `promotion_policy_unavailable` when the descriptive diff and baseline reach that stage, with the analytical outcome carried in `persistence`.
+
+26-11-26: the owner authorized the P2 correction. Apply a scale-aware `Number.EPSILON` tolerance only when comparing the absolute daily deviation with the inclusive A13 band. Keep the computed band, D1, Quality and held decision policy.
 
 ## 11. Surprises / Open questions
 
