@@ -486,15 +486,29 @@ test('DB sleep Meaningfulness holds a descriptive change with scoped lineage', a
       current: { personId: personC },
     },
     baselineEvidence: { result: { baseline: { sampleDays: 28 } } },
+    persistence: {
+      personId: personC,
+      status: 'unavailable',
+      reasonCode: 'persistence_quality_blocked',
+    },
     knowledgeAsOf: 'unavailable',
   });
   expect(sparse).toMatchObject({
     reasonCodes: ['diff_insufficient_quality'],
     diff: { deltaHours: null, current: { personId: personB } },
-    baselineEvidence: null,
+    baselineEvidence: { result: { baseline: null } },
+    persistence: {
+      personId: personB,
+      status: 'unavailable',
+      reasonCode: 'persistence_current_coverage_insufficient',
+    },
   });
-  const quality = decision.baselineEvidence!.result.quality;
+  const quality = decision.baselineEvidence.result.quality;
   expect(quality.combined.calculatedAt).toBe(decision.diff.calculatedAt);
+  expect(decision.persistence.calculatedAt).toBe(decision.diff.calculatedAt);
+  expect(decision.persistence.inputFingerprint).toBe(
+    decision.baselineEvidence.inputFingerprint,
+  );
   const personRows = await readCurrentSleepFacts(
     reader,
     personC,
@@ -510,6 +524,11 @@ test('DB sleep Meaningfulness holds a descriptive change with scoped lineage', a
       .sort((a, b) => a.factId.localeCompare(b.factId)),
   );
   expect(quality.combined.provenance.rawRecordIds).toHaveLength(35);
+  expect(
+    sparse.baselineEvidence.result.quality.combined.provenance.factIds.some(
+      (id) => quality.combined.provenance.factIds.includes(id),
+    ),
+  ).toBe(false);
 });
 
 test('DB sparse series and M1 source switch suppress baseline/trend', async () => {

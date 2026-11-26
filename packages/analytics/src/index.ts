@@ -1035,7 +1035,163 @@ type SleepMeaningfulnessReason =
   | 'baseline_insufficient_coverage'
   | 'baseline_unavailable'
   | 'baseline_limited_quality'
-  | 'persistence_evidence_unavailable';
+  | 'promotion_policy_unavailable';
+
+const sleepPersistenceParameters = Object.freeze({
+  minimumRunDays: 4,
+  requiredCurrentDays: sleepDuration.baselineParameters.currentDays,
+  minimumReferenceDays: Math.max(
+    sleepDuration.baselineParameters.minimumReferenceDays,
+    Math.ceil(
+      sleepDuration.baselineParameters.referenceDays *
+        sleepDuration.qualityPolicy.sufficientCoverage,
+    ),
+  ),
+  minimumBandHours: 0.5,
+  madMultiplier: 2,
+});
+
+type SleepPersistenceUnavailableReason =
+  | 'persistence_source_unproven'
+  | 'persistence_quality_blocked'
+  | 'persistence_current_coverage_insufficient'
+  | 'persistence_reference_coverage_insufficient';
+
+type SleepPersistenceDirection = {
+  qualifyingDays: number;
+  longestRun: { days: number; startDate: string; endDate: string } | null;
+};
+
+type SleepPersistenceEvidence = {
+  personId: string;
+  metricId: typeof sleepDuration.id;
+  metricDefinitionVersion: string;
+  algorithmVersion: 'sleep-persistence-run-v1';
+  parameters: typeof sleepPersistenceParameters;
+  inputFingerprint: string;
+  calculatedAt: string;
+} & (
+  | {
+      status: 'unavailable';
+      reasonCode: SleepPersistenceUnavailableReason;
+      bandHours: null;
+      directions: null;
+    }
+  | {
+      status: 'pattern_observed' | 'pattern_not_observed';
+      reasonCode: 'persistence_run_observed' | 'persistence_run_not_observed';
+      bandHours: number;
+      directions: Record<'above' | 'below', SleepPersistenceDirection>;
+    }
+);
+
+function sleepPersistenceBlocker(
+  result: SleepBaselineTrendResult,
+): SleepPersistenceUnavailableReason | null {
+  const { combined, current, reference } = result.quality;
+  if (
+    combined.sourceContinuity.status === 'transition' ||
+    combined.sourceContinuity.status === 'ambiguous'
+  )
+    return 'persistence_source_unproven';
+  if (combined.excludedFactIds.length || combined.sameDayExtraFactCount)
+    return 'persistence_quality_blocked';
+  if (
+    current.coverage.observedDays <
+    sleepPersistenceParameters.requiredCurrentDays
+  )
+    return 'persistence_current_coverage_insufficient';
+  if (
+    reference.coverage.observedDays <
+    sleepPersistenceParameters.minimumReferenceDays
+  )
+    return 'persistence_reference_coverage_insufficient';
+  return result.status === 'sufficient' ? null : 'persistence_quality_blocked';
+}
+
+function evaluateSleepPersistence(
+  facts: SleepFactRow[],
+  personId: string,
+  result: SleepBaselineTrendResult,
+  inputFingerprint: string,
+): SleepPersistenceEvidence {
+  const base = {
+    personId,
+    metricId: result.metricId,
+    metricDefinitionVersion: result.metricDefinitionVersion,
+    algorithmVersion: 'sleep-persistence-run-v1' as const,
+    parameters: sleepPersistenceParameters,
+    inputFingerprint,
+    calculatedAt: result.calculatedAt,
+  };
+  const blocker = sleepPersistenceBlocker(result);
+  if (blocker || !result.baseline)
+    return {
+      ...base,
+      status: 'unavailable',
+      reasonCode: blocker ?? 'persistence_quality_blocked',
+      bandHours: null,
+      directions: null,
+    };
+
+  const { medianHours, madHours } = result.baseline;
+  const bandHours = Math.max(
+    sleepPersistenceParameters.minimumBandHours,
+    sleepPersistenceParameters.madMultiplier * madHours,
+  );
+  const currentIds = new Set(result.quality.current.provenance.factIds);
+  const days = facts
+    .filter((fact) => currentIds.has(fact.id))
+    .map((fact) => ({
+      date: (fact.effective as { value: string }).value,
+      deviation:
+        (fact.value as { canonicalValue: number }).canonicalValue - medianHours,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const directions: Record<'above' | 'below', SleepPersistenceDirection> = {
+    above: { qualifyingDays: 0, longestRun: null },
+    below: { qualifyingDays: 0, longestRun: null },
+  };
+  let direction: 'above' | 'below' | null = null;
+  let startDate = '';
+  let length = 0;
+  // The median, MAD and final deviation comparison accumulate up to 16uM:
+  // u = EPSILON / 2, M = the maximum valid duration. See the A13 ExecPlan.
+  const roundingTolerance =
+    8 * Number.EPSILON * sleepDuration.qualityPolicy.maximumDurationHours;
+  for (const { date, deviation } of days) {
+    if (bandHours - Math.abs(deviation) > roundingTolerance) {
+      direction = null;
+      continue;
+    }
+    const nextDirection = deviation > 0 ? 'above' : 'below';
+    if (nextDirection !== direction) {
+      direction = nextDirection;
+      startDate = date;
+      length = 0;
+    }
+    length++;
+    const summary = directions[nextDirection];
+    summary.qualifyingDays++;
+    if (length > (summary.longestRun?.days ?? 0))
+      summary.longestRun = { days: length, startDate, endDate: date };
+  }
+  const observed = Object.values(directions).some(
+    (summary) =>
+      (summary.longestRun?.days ?? 0) >=
+      sleepPersistenceParameters.minimumRunDays,
+  );
+  return {
+    ...base,
+    status: observed ? 'pattern_observed' : 'pattern_not_observed',
+    reasonCode: observed
+      ? 'persistence_run_observed'
+      : 'persistence_run_not_observed',
+    bandHours,
+    directions,
+  };
+}
 
 export type SleepMeaningfulnessDecision = {
   kind: 'partial_sleep_meaningfulness';
@@ -1047,8 +1203,8 @@ export type SleepMeaningfulnessDecision = {
     policy: MetricDefinition['baselinePolicy'];
     inputFingerprint: string;
     result: SleepBaselineTrendResult;
-  } | null;
-  persistence: 'unavailable';
+  };
+  persistence: SleepPersistenceEvidence;
   calculatedAt: string;
   knowledgeAsOf: 'unavailable';
 };
@@ -1080,8 +1236,16 @@ export function evaluateSleepMeaningfulness(
     personId,
     window,
   );
+  const result = evaluateSleepBaselineTrend(facts, window);
+  const baselineEvidence = {
+    policy: sleepDuration.baselinePolicy,
+    inputFingerprint: fingerprintSleepInputs(
+      facts,
+      result.quality.combined.provenance.factIds,
+    ),
+    result,
+  };
   const reasonCodes: SleepMeaningfulnessReason[] = [];
-  let baselineEvidence: SleepMeaningfulnessDecision['baselineEvidence'] = null;
   switch (diff.status) {
     case 'incompatible':
       reasonCodes.push('diff_incompatible');
@@ -1100,15 +1264,6 @@ export function evaluateSleepMeaningfulness(
     case 'numeric_changed': {
       if (diff.qualityStatus === 'limited')
         reasonCodes.push('diff_limited_quality');
-      const result = evaluateSleepBaselineTrend(facts, window);
-      baselineEvidence = {
-        policy: sleepDuration.baselinePolicy,
-        inputFingerprint: fingerprintSleepInputs(
-          facts,
-          result.quality.combined.provenance.factIds,
-        ),
-        result,
-      };
       if (
         result.quality.reference.coverage.observedDays <
         result.parameters.minimumReferenceDays
@@ -1117,7 +1272,7 @@ export function evaluateSleepMeaningfulness(
       else if (!result.baseline) reasonCodes.push('baseline_unavailable');
       else if (result.status === 'limited')
         reasonCodes.push('baseline_limited_quality');
-      else reasonCodes.push('persistence_evidence_unavailable');
+      else reasonCodes.push('promotion_policy_unavailable');
       break;
     }
   }
@@ -1128,7 +1283,12 @@ export function evaluateSleepMeaningfulness(
     reasonCodes,
     diff,
     baselineEvidence,
-    persistence: 'unavailable',
+    persistence: evaluateSleepPersistence(
+      facts,
+      personId,
+      result,
+      baselineEvidence.inputFingerprint,
+    ),
     calculatedAt: window.calculatedAt,
     knowledgeAsOf: 'unavailable',
   };
