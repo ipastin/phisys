@@ -979,11 +979,7 @@ export function evaluateSleepMetricStatePair(
   };
 }
 
-export async function sleepMetricStatePair(
-  pool: Pool,
-  personId: string,
-  request: SleepMetricStateRequest,
-): Promise<SleepMetricStatePair> {
+function checkedSleepMetricStateRequest(request: SleepMetricStateRequest) {
   if (
     Object.keys(request).some(
       (key) => !['startDate', 'endDateExclusive', 'asOfDate'].includes(key),
@@ -1003,6 +999,15 @@ export async function sleepMetricStatePair(
     asOf < end
   )
     throw new Error('Current window must be 7 closed local dates');
+  return { dates, start };
+}
+
+export async function sleepMetricStatePair(
+  pool: Pool,
+  personId: string,
+  request: SleepMetricStateRequest,
+): Promise<SleepMetricStatePair> {
+  const { dates, start } = checkedSleepMetricStateRequest(request);
   const previousStart = new Date(
     start - sleepDuration.comparisonParameters.previousDays * dayMs,
   )
@@ -1016,6 +1021,140 @@ export async function sleepMetricStatePair(
   );
   const calculatedAt = new Date().toISOString();
   return evaluateSleepMetricStatePair(facts, personId, {
+    ...dates,
+    calculatedAt,
+  });
+}
+
+type SleepMeaningfulnessReason =
+  | 'diff_unchanged'
+  | 'diff_incompatible'
+  | 'diff_insufficient_quality'
+  | 'diff_blocked'
+  | 'diff_limited_quality'
+  | 'baseline_insufficient_coverage'
+  | 'baseline_unavailable'
+  | 'baseline_limited_quality'
+  | 'persistence_evidence_unavailable';
+
+export type SleepMeaningfulnessDecision = {
+  kind: 'partial_sleep_meaningfulness';
+  status: 'held';
+  policy: 'sleep-meaningfulness-evidence-v1';
+  reasonCodes: SleepMeaningfulnessReason[];
+  diff: SleepMetricStateDiff;
+  baselineEvidence: {
+    policy: MetricDefinition['baselinePolicy'];
+    inputFingerprint: string;
+    result: SleepBaselineTrendResult;
+  } | null;
+  persistence: 'unavailable';
+  calculatedAt: string;
+  knowledgeAsOf: 'unavailable';
+};
+
+/** Pure composition for rows already scoped to one person by the reader. */
+export function evaluateSleepMeaningfulness(
+  facts: SleepFactRow[],
+  personId: string,
+  window: QualityWindow,
+): SleepMeaningfulnessDecision {
+  const previousStart = new Date(
+    day(window.startDate) -
+      sleepDuration.comparisonParameters.previousDays * dayMs,
+  )
+    .toISOString()
+    .slice(0, 10);
+  // Match the Step 12 reader's scope and keep malformed dates inside that scope.
+  const comparisonFacts = facts.filter(({ effective }) => {
+    const date = effective as { kind?: unknown; value?: unknown } | null;
+    return (
+      date?.kind === 'local_date' &&
+      typeof date.value === 'string' &&
+      date.value >= previousStart &&
+      date.value < window.endDateExclusive
+    );
+  });
+  const { diff } = evaluateSleepMetricStatePair(
+    comparisonFacts,
+    personId,
+    window,
+  );
+  const reasonCodes: SleepMeaningfulnessReason[] = [];
+  let baselineEvidence: SleepMeaningfulnessDecision['baselineEvidence'] = null;
+  switch (diff.status) {
+    case 'incompatible':
+      reasonCodes.push('diff_incompatible');
+      break;
+    case 'unchanged':
+      reasonCodes.push('diff_unchanged');
+      break;
+    case 'unknown':
+      reasonCodes.push(
+        diff.quality?.previous.status === 'insufficient' ||
+          diff.quality?.current.status === 'insufficient'
+          ? 'diff_insufficient_quality'
+          : 'diff_blocked',
+      );
+      break;
+    case 'numeric_changed': {
+      if (diff.qualityStatus === 'limited')
+        reasonCodes.push('diff_limited_quality');
+      const result = evaluateSleepBaselineTrend(facts, window);
+      baselineEvidence = {
+        policy: sleepDuration.baselinePolicy,
+        inputFingerprint: fingerprintSleepInputs(
+          facts,
+          result.quality.combined.provenance.factIds,
+        ),
+        result,
+      };
+      if (
+        result.quality.reference.coverage.observedDays <
+        result.parameters.minimumReferenceDays
+      )
+        reasonCodes.push('baseline_insufficient_coverage');
+      else if (!result.baseline) reasonCodes.push('baseline_unavailable');
+      else if (result.status === 'limited')
+        reasonCodes.push('baseline_limited_quality');
+      else reasonCodes.push('persistence_evidence_unavailable');
+      break;
+    }
+  }
+  return {
+    kind: 'partial_sleep_meaningfulness',
+    status: 'held',
+    policy: 'sleep-meaningfulness-evidence-v1',
+    reasonCodes,
+    diff,
+    baselineEvidence,
+    persistence: 'unavailable',
+    calculatedAt: window.calculatedAt,
+    knowledgeAsOf: 'unavailable',
+  };
+}
+
+export async function sleepMeaningfulness(
+  pool: Pool,
+  personId: string,
+  request: SleepMetricStateRequest,
+): Promise<SleepMeaningfulnessDecision> {
+  const { dates, start } = checkedSleepMetricStateRequest(request);
+  const referenceStart = new Date(
+    start - sleepDuration.baselineParameters.referenceDays * dayMs,
+  )
+    .toISOString()
+    .split('T')[0]!;
+  if (referenceStart.length !== 10)
+    throw new Error('Sleep baseline reference start must be a four-digit date');
+  const facts = await readCurrentSleepFacts(
+    pool,
+    personId,
+    referenceStart,
+    dates.endDateExclusive,
+  );
+  const calculatedAt = new Date().toISOString();
+  return evaluateSleepMeaningfulness(facts, personId, {
     ...dates,
     calculatedAt,
   });

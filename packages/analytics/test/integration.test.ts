@@ -4,6 +4,7 @@ import { ingest } from '@myphisys/ingestion';
 import { goldenRecords } from '../../ingestion/test/golden.js';
 import {
   sleepBaselineTrend,
+  sleepMeaningfulness,
   sleepMetricStatePair,
   sleepPeriodComparison,
   sleepQuality,
@@ -465,6 +466,50 @@ test('DB baseline resists a current shift and reference outlier', async () => {
   expect(await sleepBaselineTrend(reader, personC, result.window)).toEqual(
     result,
   );
+});
+
+test('DB sleep Meaningfulness holds a descriptive change with scoped lineage', async () => {
+  const request = {
+    startDate: '2026-01-29',
+    endDateExclusive: '2026-02-05',
+    asOfDate: '2026-02-05',
+  };
+  const decision = await sleepMeaningfulness(reader, personC, request);
+  const sparse = await sleepMeaningfulness(reader, personB, request);
+  expect(decision).toMatchObject({
+    status: 'held',
+    reasonCodes: ['diff_limited_quality', 'baseline_limited_quality'],
+    diff: {
+      status: 'numeric_changed',
+      deltaHours: -3.5,
+      qualityStatus: 'limited',
+      current: { personId: personC },
+    },
+    baselineEvidence: { result: { baseline: { sampleDays: 28 } } },
+    knowledgeAsOf: 'unavailable',
+  });
+  expect(sparse).toMatchObject({
+    reasonCodes: ['diff_insufficient_quality'],
+    diff: { deltaHours: null, current: { personId: personB } },
+    baselineEvidence: null,
+  });
+  const quality = decision.baselineEvidence!.result.quality;
+  expect(quality.combined.calculatedAt).toBe(decision.diff.calculatedAt);
+  const personRows = await readCurrentSleepFacts(
+    reader,
+    personC,
+    '2026-01-01',
+    request.endDateExclusive,
+  );
+  expect(quality.combined.provenance.factIds).toEqual(
+    personRows.map(({ id }) => id).sort(),
+  );
+  expect(quality.combined.provenance.factSupports).toEqual(
+    personRows
+      .map(({ id, supports }) => ({ factId: id, supports }))
+      .sort((a, b) => a.factId.localeCompare(b.factId)),
+  );
+  expect(quality.combined.provenance.rawRecordIds).toHaveLength(35);
 });
 
 test('DB sparse series and M1 source switch suppress baseline/trend', async () => {
