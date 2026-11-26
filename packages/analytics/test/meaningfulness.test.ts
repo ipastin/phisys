@@ -490,6 +490,63 @@ test.each([
   },
 );
 
+test.each(
+  [
+    {
+      referenceValues: [8.2, 8.4, 8.8, 9.1],
+      median: 8.6,
+      boundary: 9.2,
+      side: 'above',
+      direction: 1,
+    },
+    {
+      referenceValues: [4.5, 8.7, 9.1, 9.3],
+      median: 8.9,
+      boundary: 8.3,
+      side: 'below',
+      direction: -1,
+    },
+  ].flatMap((fixture) =>
+    [
+      { position: 'inside', offset: -0.000001, count: 0 },
+      { position: 'on', offset: 0, count: 4 },
+      { position: 'outside', offset: 0.000001, count: 4 },
+    ].map((testCase) => ({ ...fixture, ...testCase })),
+  ),
+)(
+  'A13 accumulated rounding: $side baseline, $position the 2 × MAD boundary',
+  ({ referenceValues, median, boundary, side, direction, offset, count }) => {
+    const reference = referenceValues.flatMap((hours) =>
+      Array<number>(7).fill(hours),
+    );
+    const hours = boundary + direction * offset;
+    const facts = series(
+      [hours, hours, hours, hours, median, median, median],
+      reference,
+    );
+    const decision = evaluate(facts);
+    expect(decision.status).toBe('held');
+    expect(decision.diff).toEqual(
+      evaluateSleepMetricStatePair(facts.slice(21), personId, window).diff,
+    );
+    expect(decision.baselineEvidence.result.status).toBe('sufficient');
+    expect(decision.baselineEvidence.result.baseline?.medianHours).toBeCloseTo(
+      median,
+    );
+    expect(decision.baselineEvidence.result.baseline?.madHours).toBeCloseTo(
+      0.3,
+    );
+    expect(decision.persistence.bandHours).toBeCloseTo(0.6);
+    expect(decision.persistence).toMatchObject({
+      status: count ? 'pattern_observed' : 'pattern_not_observed',
+      reasonCode: count
+        ? 'persistence_run_observed'
+        : 'persistence_run_not_observed',
+      directions: { [side]: { qualifyingDays: count } },
+    });
+  },
+);
+
 test('A13-14: equal weekly medians can coexist with current-week persistence', () => {
   const reference = [...Array<number>(21).fill(8), ...Array<number>(7).fill(7)];
   const decision = evaluate(series(7, reference));

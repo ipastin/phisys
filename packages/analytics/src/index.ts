@@ -1156,9 +1156,10 @@ function evaluateSleepPersistence(
   let direction: 'above' | 'below' | null = null;
   let startDate = '';
   let length = 0;
-  // Subtracting decimal hours and computing MAD can round on opposite sides of equality.
+  // The median, MAD and final deviation comparison accumulate up to 16uM:
+  // u = EPSILON / 2, M = the maximum valid duration. See the A13 ExecPlan.
   const roundingTolerance =
-    2 * Number.EPSILON * Math.max(1, medianHours, bandHours);
+    8 * Number.EPSILON * sleepDuration.qualityPolicy.maximumDurationHours;
   for (const { date, deviation } of days) {
     if (bandHours - Math.abs(deviation) > roundingTolerance) {
       direction = null;
