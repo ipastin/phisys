@@ -142,10 +142,12 @@ const verificationService = createSleepVerificationService(
   verificationConfig,
 );
 function syntheticToken(
-  claims: { sub: string; client_id?: string },
+  claims: { sub: string; client_id?: string; session_id?: string | null },
   marker = 'fixture',
 ) {
-  const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+  const payload = Buffer.from(
+    JSON.stringify({ session_id: randomUUID(), ...claims }),
+  ).toString('base64url');
   return `synthetic.${payload}.${marker}`;
 }
 
@@ -162,19 +164,37 @@ async function verificationOwner() {
 
 function syntheticSupabase(
   subjects: ReadonlyMap<string, string>,
-  beforeProfile?: (token: string) => Promise<void>,
+  options: {
+    beforeProfile?: (token: string) => Promise<void>;
+    authVersion?: string;
+    sessionResponse?: (token: string) => Response;
+  } = {},
 ) {
   vi.stubGlobal(
     'fetch',
-    vi.fn<typeof fetch>(async (url, options) => {
-      expect(url).toBe(`${verificationIssuer}/user`);
-      expect(options?.redirect).toBe('error');
-      const headers = new Headers(options?.headers);
+    vi.fn<typeof fetch>(async (url, request) => {
+      expect(request?.redirect).toBe('error');
+      expect(request?.cache).toBe('no-store');
+      const headers = new Headers(request?.headers);
       expect(headers.get('apikey')).toBe(verificationConfig.publishableKey);
+      expect(headers.get('x-supabase-api-version')).toBe('2024-01-01');
+      if (url === `${verificationIssuer}/health`) {
+        expect(headers.has('authorization')).toBe(false);
+        return Response.json({ version: options.authVersion ?? 'v2.198.0' });
+      }
       const token = headers.get('authorization')?.slice('Bearer '.length) ?? '';
       const id = subjects.get(token);
       if (!id) return new Response(null, { status: 401 });
-      await beforeProfile?.(token);
+      if (url === `${verificationIssuer}/user/oauth/grants`)
+        return (
+          options.sessionResponse?.(token) ??
+          Response.json(
+            { code: 'feature_disabled', message: 'OAuth server is disabled' },
+            { status: 404 },
+          )
+        );
+      expect(url).toBe(`${verificationIssuer}/user`);
+      await options.beforeProfile?.(token);
       return Response.json({
         id,
         role: 'authenticated',
@@ -369,6 +389,80 @@ test('DB Manual verification rejects a delegated token before opening a DB conne
   expect(connect).not.toHaveBeenCalled();
 });
 
+test('DB Manual verification checks the stored session when the token omits client_id', async () => {
+  const owner = await verificationOwner();
+  const oauthSession = syntheticToken({ sub: owner.subject });
+  const noSession = syntheticToken({ sub: owner.subject, session_id: null });
+  const sessionResponse = vi.fn((token: string) =>
+    token === oauthSession
+      ? new Response(null, { status: 403 })
+      : Response.json([]),
+  );
+  syntheticSupabase(
+    new Map([
+      [owner.token, owner.subject],
+      [oauthSession, owner.subject],
+      [noSession, owner.subject],
+    ]),
+    { sessionResponse },
+  );
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  const connect = vi.spyOn(verifier, 'connect');
+  await expect(
+    verificationService.getRevision(oauthSession, factId),
+  ).rejects.toMatchObject({ code: 'authentication_required' });
+  for (const decide of [
+    verificationService.confirm,
+    verificationService.revoke,
+  ]) {
+    await expect(decide(oauthSession, preview)).rejects.toMatchObject({
+      code: 'authentication_required',
+    });
+    await expect(decide(noSession, preview)).rejects.toMatchObject({
+      code: 'authentication_required',
+    });
+  }
+  expect(sessionResponse.mock.calls).toEqual([
+    [owner.token],
+    [oauthSession],
+    [oauthSession],
+    [oauthSession],
+  ]);
+  expect(connect).not.toHaveBeenCalled();
+});
+
+test('DB Manual verification fails closed without a supported Supabase session verdict', async () => {
+  const owner = await verificationOwner();
+  const subjects = new Map([[owner.token, owner.subject]]);
+  syntheticSupabase(subjects);
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  const connect = vi.spyOn(verifier, 'connect');
+
+  const oldServerVerdict = vi.fn(() => Response.json([]));
+  syntheticSupabase(subjects, {
+    authVersion: 'v2.197.9',
+    sessionResponse: oldServerVerdict,
+  });
+  await expect(
+    verificationService.confirm(owner.token, preview),
+  ).rejects.toMatchObject({ code: 'authentication_unavailable' });
+  expect(oldServerVerdict).not.toHaveBeenCalled();
+  syntheticSupabase(subjects, {
+    sessionResponse: () =>
+      Response.json({ code: 'not_found' }, { status: 404 }),
+  });
+  await expect(
+    verificationService.confirm(owner.token, preview),
+  ).rejects.toMatchObject({ code: 'authentication_unavailable' });
+  expect(connect).not.toHaveBeenCalled();
+});
+
 test('DB Manual revoke closes an unverified revision before a pending confirm arrives', async () => {
   const owner = await verificationOwner();
   const delayedToken = syntheticToken({ sub: owner.subject }, 'delayed');
@@ -379,11 +473,13 @@ test('DB Manual revoke closes an unverified revision before a pending confirm ar
       [owner.token, owner.subject],
       [delayedToken, owner.subject],
     ]),
-    async (token) => {
-      if (token === delayedToken) {
-        entered.resolve();
-        await resume.promise;
-      }
+    {
+      beforeProfile: async (token) => {
+        if (token === delayedToken) {
+          entered.resolve();
+          await resume.promise;
+        }
+      },
     },
   );
   const factId = await importManualNight(

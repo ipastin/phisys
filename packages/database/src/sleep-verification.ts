@@ -6,8 +6,7 @@ import { withTransaction } from './transaction.js';
 const policyVersion = 'manual-sleep-verification-v1';
 const factUuid =
   /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
-const subjectUuid =
-  /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
+const authUuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
 export type SupabaseAuthConfig = Readonly<{
   projectUrl: string;
@@ -59,16 +58,22 @@ async function authenticateOwner(
   if (!encodedClaims)
     throw new SleepVerificationError('authentication_required');
 
+  const projectRequest = {
+    headers: { apikey: publishableKey, 'X-Supabase-Api-Version': '2024-01-01' },
+    cache: 'no-store',
+    redirect: 'error',
+    signal: AbortSignal.timeout(5_000),
+  } as const;
+  const userRequest = {
+    ...projectRequest,
+    headers: {
+      ...projectRequest.headers,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  };
   let user: { id?: unknown; role?: unknown; is_anonymous?: unknown } | null;
   try {
-    const response = await fetch(`${issuer}/user`, {
-      headers: {
-        apikey: publishableKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-      redirect: 'error',
-      signal: AbortSignal.timeout(5_000),
-    });
+    const response = await fetch(`${issuer}/user`, userRequest);
     if (response.status === 401 || response.status === 403)
       throw new SleepVerificationError('authentication_required');
     if (response.status !== 200)
@@ -81,7 +86,7 @@ async function authenticateOwner(
   if (
     !user ||
     typeof user.id !== 'string' ||
-    !subjectUuid.test(user.id) ||
+    !authUuid.test(user.id) ||
     user.role !== 'authenticated' ||
     user.is_anonymous !== false
   )
@@ -103,10 +108,49 @@ async function authenticateOwner(
     !('sub' in claims) ||
     typeof claims.sub !== 'string' ||
     claims.sub.toLowerCase() !== subject ||
+    !('session_id' in claims) ||
+    typeof claims.session_id !== 'string' ||
+    !authUuid.test(claims.session_id) ||
+    claims.session_id === '00000000-0000-0000-0000-000000000000' ||
     Object.hasOwn(claims, 'client_id')
   )
     throw new SleepVerificationError('authentication_required');
-  return subject;
+
+  try {
+    // Supabase Auth v2.198.0 introduced the persisted-session guard on this route.
+    const health = await fetch(`${issuer}/health`, projectRequest);
+    if (health.status !== 200)
+      throw new SleepVerificationError('authentication_unavailable');
+    const version = ((await health.json()) as { version?: unknown } | null)
+      ?.version;
+    const minor =
+      typeof version === 'string'
+        ? Number(/^v2\.(0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.exec(version)?.[1])
+        : NaN;
+    if (!Number.isSafeInteger(minor) || minor < 198)
+      throw new SleepVerificationError('authentication_unavailable');
+
+    // Auth checks the stored session before listing grants or checking the feature flag.
+    const grants = await fetch(`${issuer}/user/oauth/grants`, userRequest);
+    if (grants.status === 401 || grants.status === 403)
+      throw new SleepVerificationError('authentication_required');
+    if (grants.status === 200 && Array.isArray(await grants.json()))
+      return subject;
+    if (grants.status === 404) {
+      const error = (await grants.json()) as {
+        code?: unknown;
+        message?: unknown;
+      } | null;
+      if (
+        error?.code === 'feature_disabled' &&
+        error.message === 'OAuth server is disabled'
+      )
+        return subject;
+    }
+  } catch (error) {
+    if (error instanceof SleepVerificationError) throw error;
+  }
+  throw new SleepVerificationError('authentication_unavailable');
 }
 
 type RevisionRow = {
