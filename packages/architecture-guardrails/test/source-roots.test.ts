@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 test('discovers only package and app source roots', () => {
-  const root = mkdtempSync(join(tmpdir(), 'myphisys-roots-'));
+  const root = mkdtempSync(join(tmpdir(), 'phisys-roots-'));
   created.push(root);
   mkdirSync(join(root, 'packages', 'architecture-guardrails', 'src'), {
     recursive: true,
@@ -27,7 +27,7 @@ test('discovers only package and app source roots', () => {
 });
 
 test('fails closed when no first-party source exists', () => {
-  const root = mkdtempSync(join(tmpdir(), 'myphisys-roots-'));
+  const root = mkdtempSync(join(tmpdir(), 'phisys-roots-'));
   created.push(root);
   expect(() => sourceRoots(root)).toThrow('No first-party source roots found');
 });

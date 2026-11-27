@@ -1,5 +1,5 @@
 {
-  "name": "@myphisys/ingestion",
+  "name": "@phisys/ingestion",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,7 +12,7 @@
     "test:unit": "vitest run test --exclude test/integration.test.ts"
   },
   "dependencies": {
-    "@myphisys/database": "workspace:*",
-    "@myphisys/health-core": "workspace:*"
+    "@phisys/database": "workspace:*",
+    "@phisys/health-core": "workspace:*"
   }
 }

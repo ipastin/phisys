@@ -1,2 +1,2 @@
-import { fixture } from '@myphisys/ingestion';
+import { fixture } from '@phisys/ingestion';
 export const allowed = fixture;

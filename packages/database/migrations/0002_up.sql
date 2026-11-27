@@ -1,26 +1,32 @@
 BEGIN;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'myphisys_analytics') THEN
-    CREATE ROLE myphisys_analytics NOLOGIN;
+  IF EXISTS (
+    SELECT 1 FROM pg_roles WHERE rolname = 'phisys_analytics'
+      AND (rolcanlogin OR rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls)
+  ) THEN
+    RAISE EXCEPTION 'Role phisys_analytics must be a non-login capability role';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'phisys_analytics') THEN
+    CREATE ROLE phisys_analytics NOLOGIN;
   END IF;
 END $$;
 
-GRANT USAGE ON SCHEMA health, source TO myphisys_analytics;
+GRANT USAGE ON SCHEMA health, source TO phisys_analytics;
 GRANT SELECT (id, person_id, concept_id, state, effective, value, verification, epistemic)
-  ON health.fact TO myphisys_analytics;
+  ON health.fact TO phisys_analytics;
 GRANT SELECT (person_id, fact_id, raw_id, transformation)
-  ON health.provenance TO myphisys_analytics;
+  ON health.provenance TO phisys_analytics;
 GRANT SELECT (person_id, existing_fact_id, state)
-  ON health.conflict TO myphisys_analytics;
+  ON health.conflict TO phisys_analytics;
 GRANT SELECT (id, person_id, connector_id)
-  ON source.source TO myphisys_analytics;
+  ON source.source TO phisys_analytics;
 GRANT SELECT (id, person_id, source_id)
-  ON source.record TO myphisys_analytics;
+  ON source.record TO phisys_analytics;
 GRANT SELECT (id, person_id, record_id, version, operation)
-  ON source.raw_record TO myphisys_analytics;
+  ON source.raw_record TO phisys_analytics;
 GRANT SELECT (id, person_id, raw_id)
-  ON source.quarantine TO myphisys_analytics;
+  ON source.quarantine TO phisys_analytics;
 
 DO $$ DECLARE tab text; BEGIN
   FOREACH tab IN ARRAY ARRAY[
@@ -28,7 +34,7 @@ DO $$ DECLARE tab text; BEGIN
     'source.source', 'source.record', 'source.raw_record', 'source.quarantine'
   ] LOOP
     EXECUTE format(
-      'CREATE POLICY person_scope_analytics ON %s FOR SELECT TO myphisys_analytics USING (person_id = nullif(current_setting(''app.person_id'', true), '''')::uuid)',
+      'CREATE POLICY person_scope_analytics ON %s FOR SELECT TO phisys_analytics USING (person_id = nullif(current_setting(''app.person_id'', true), '''')::uuid)',
       tab
     );
   END LOOP;

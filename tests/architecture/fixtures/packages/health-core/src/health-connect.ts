@@ -1,2 +1,2 @@
-import { fixture } from '@myphisys/health-connect';
+import { fixture } from '@phisys/health-connect';
 export const forbidden = fixture;

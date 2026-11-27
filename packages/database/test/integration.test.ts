@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { beforeAll, afterAll, describe, expect, test } from 'vitest';
 import { uuidv7 } from '../src/index.js';
+import { readCurrentSleepFacts } from '../src/analytics.js';
 
 if (!process.env.DATABASE_URL || process.env.M1_DISPOSABLE_DB !== '1')
   throw new Error(
@@ -51,7 +52,7 @@ describe('M1 PostgreSQL foundation', () => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query('SET LOCAL ROLE myphisys_connector');
+      await client.query('SET LOCAL ROLE phisys_connector');
       await client.query("SELECT set_config('app.person_id',$1,true)", [a]);
       const visible = await client.query('SELECT id FROM source.source');
       expect(visible.rows.map((r: { id: string }) => r.id)).toEqual([sourceA]);
@@ -60,7 +61,7 @@ describe('M1 PostgreSQL foundation', () => {
       ).rejects.toMatchObject({ code: '42501' });
       await client.query('ROLLBACK');
       await client.query('BEGIN');
-      await client.query('SET LOCAL ROLE myphisys_connector');
+      await client.query('SET LOCAL ROLE phisys_connector');
       await client.query("SELECT set_config('app.person_id',$1,true)", [a]);
       await expect(
         client.query(
@@ -156,8 +157,40 @@ describe('M1 PostgreSQL foundation', () => {
         .rows[0]?.table_name,
     ).toBe('health.fact');
     expect(
-      (await pool.query("SELECT to_regrole('myphisys_analytics') AS role_name"))
+      (await pool.query("SELECT to_regrole('phisys_analytics') AS role_name"))
         .rows[0]?.role_name,
-    ).toBe('myphisys_analytics');
+    ).toBe('phisys_analytics');
+  });
+
+  test('analytics reads and rolls back on a legacy database even when the new role exists in the cluster', async () => {
+    await pool.query(analyticsDown);
+    await pool.query(down);
+    await pool.query(up.replaceAll('phisys_', 'myphisys_'));
+    await pool.query(analyticsUp.replaceAll('phisys_', 'myphisys_'));
+
+    const personId = uuidv7();
+    await pool.query('INSERT INTO identity.person(id) VALUES ($1)', [personId]);
+    expect(
+      await readCurrentSleepFacts(pool, personId, '2026-01-01', '2026-01-08'),
+    ).toEqual([]);
+
+    await pool.query(analyticsDown);
+    expect(
+      (
+        await pool.query(
+          "SELECT has_schema_privilege('myphisys_analytics', 'health', 'USAGE') AS allowed",
+        )
+      ).rows[0]?.allowed,
+    ).toBe(false);
+    expect(
+      (
+        await pool.query('SELECT id FROM identity.person WHERE id=$1', [
+          personId,
+        ])
+      ).rows[0]?.id,
+    ).toBe(personId);
+    await pool.query(down);
+    await pool.query(up);
+    await pool.query(analyticsUp);
   });
 });

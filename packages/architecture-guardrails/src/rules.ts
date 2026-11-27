@@ -1,7 +1,7 @@
 import type { IForbiddenRuleType } from 'dependency-cruiser';
 
 const packagePath = (name: string) =>
-  `(?:^|/)packages/(?:${name})/|^@myphisys/(?:${name})(?:/|$)`;
+  `(?:^|/)packages/(?:${name})/|^@phisys/(?:${name})(?:/|$)`;
 
 // shortcut: patterns cover the five approved provider paths; extend them when a new provider is approved.
 const providerPackage =
@@ -15,7 +15,7 @@ export const forbidden: IForbiddenRuleType[] = [
     from: { path: packagePath('health-core') },
     to: {
       pathNot:
-        '(?:^|/)packages/(?:health-core|contracts)/|^@myphisys/(?:health-core|contracts)(?:/|$)',
+        '(?:^|/)packages/(?:health-core|contracts)/|^@phisys/(?:health-core|contracts)(?:/|$)',
     },
   },
   {

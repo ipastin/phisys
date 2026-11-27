@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1700" viewBox="0 0 1536 1700" role="img" aria-labelledby="title desc">
+<title id="title">Phisys — дорожная карта</title>
+<desc id="desc">27 ноября 2026. Текущий milestone M2 Health Intelligence, инженерные шаги 00–39 и Personal Beta / post-beta surfaces.</desc>
+<rect id="canvas" x="0" y="0" width="1536" height="1700" rx="0" fill="#EFF3F8" stroke="none" stroke-width="1"/>
+<text id="stamp" x="48" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700"><tspan x="48" y="46.1">СТАТУС · 27 НОЯБРЯ 2026</tspan></text>
+<text id="roadmap-title" x="48" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="54" font-weight="700"><tspan x="48" y="110.76">Phisys — дорожная карта</tspan></text>
+<text id="roadmap-deck" x="50" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="21" font-weight="400"><tspan x="50" y="156.74">40 engineering-шагов до Personal Beta и последовательность расширения платформ после неё</tspan></text>
+<rect id="current" x="48" y="180" width="1440" height="194" rx="18" fill="#111F35" stroke="none" stroke-width="1"/>
+<text id="current-title" x="73" fill="#FFFFFF" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700"><tspan x="73" y="227.26">Сейчас · M2 Health Intelligence</tspan></text>
+<a href="https://github.com/ipastin/phisys/tree/3679cc0e206c5b6e8ec6e56f0c696e25a6121663"><text id="current-main-label" x="73" fill="#9DC5FF" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="73" y="267.04">В main · 3679cc0</tspan></text></a>
+<text id="current-main-text" x="73" fill="#FFFFFF" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="400"><tspan x="73" y="297.92">Сравниваем недели сна и распознаём устойчивое отклонение.</tspan><tspan x="73" y="320.6">Сервис пока не выбирает изменение для показа.</tspan></text>
+<rect id="current-divider" x="765" y="251" width="1" height="86" rx="0" fill="#526784" stroke="none" stroke-width="1"/>
+<a href="https://github.com/ipastin/phisys/pull/18"><text id="current-draft-label" x="790" fill="#CAB7FF" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="790" y="267.04">Draft PR #18 · fa40d45 · CI прошла · вне main</tspan></text></a>
+<text id="current-draft-text" x="790" fill="#FFFFFF" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="400"><tspan x="790" y="297.92">Владелец подтверждает или отзывает конкретную версию записи сна.</tspan><tspan x="790" y="320.6">Проверено на синтетических данных.</tspan></text>
+<text id="current-next" x="73" fill="#E1EAF7" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600"><tspan x="73" y="355.1">Рубеж M2 → Step 14 What Changed · затем Today в Android (Step 16)</tspan></text>
+<rect id="legend-done" x="48" y="396" width="24" height="24" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="legend-done-text" x="82" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="82" y="413.04">В main · в согласованном объёме</tspan></text>
+<rect id="legend-sleep" x="400" y="396" width="24" height="24" rx="5" fill="#E0ECFF" stroke="none" stroke-width="1"/>
+<text id="legend-sleep-text" x="434" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="434" y="413.04">В main · для сна</tspan></text>
+<rect id="legend-part" x="766" y="396" width="24" height="24" rx="5" fill="#FFF0DA" stroke="none" stroke-width="1"/>
+<text id="legend-part-text" x="800" fill="#83440D" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="800" y="413.04">В main · частичная реализация</tspan></text>
+<rect id="legend-planned" x="1140" y="396" width="24" height="24" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="legend-planned-text" x="1174" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1174" y="413.04">Запланировано</tspan></text>
+<rect id="m0" x="48" y="442" width="465" height="183" rx="16" fill="#FFFFFF" stroke="#C7D3E1" stroke-width="1"/>
+<rect id="m0-label" x="68" y="462" width="52" height="32" rx="6" fill="#E9EEF5" stroke="none" stroke-width="1"/>
+<text id="m0-id" x="80" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="600"><tspan x="80" y="482.92">M0</tspan></text>
+<text id="m0-name" x="133" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600"><tspan x="133" y="485.56">Foundation</tspan></text>
+<text id="m0-note" x="70" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="70" y="517.16">Steps 00–02 · PR #3</tspan></text>
+<rect id="step-00-badge" x="70" y="533" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-00-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="551.04">00</tspan></text>
+<text id="step-00-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="550.98">Repository bootstrap</tspan></text>
+<rect id="step-01-badge" x="70" y="561" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-01-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="579.04">01</tspan></text>
+<text id="step-01-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="578.98">Architecture guardrails</tspan></text>
+<rect id="step-02-badge" x="70" y="589" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-02-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="607.04">02</tspan></text>
+<text id="step-02-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="606.98">CI</tspan></text>
+<rect id="m1" x="48" y="644" width="465" height="252" rx="16" fill="#FFFFFF" stroke="#C7D3E1" stroke-width="1"/>
+<rect id="m1-label" x="68" y="664" width="52" height="32" rx="6" fill="#E9EEF5" stroke="none" stroke-width="1"/>
+<text id="m1-id" x="80" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="600"><tspan x="80" y="684.92">M1</tspan></text>
+<text id="m1-name" x="133" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600"><tspan x="133" y="687.56">Health Data Pipeline</tspan></text>
+<text id="m1-note" x="70" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="70" y="719.16">Steps 03–07 · PR #5</tspan></text>
+<rect id="step-03-badge" x="70" y="735" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-03-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="753.04">03</tspan></text>
+<text id="step-03-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="752.98">Database foundation</tspan></text>
+<rect id="step-04-badge" x="70" y="764" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-04-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="782.04">04</tspan></text>
+<text id="step-04-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="781.98">Canonical Health Core</tspan></text>
+<rect id="step-05-badge" x="70" y="793" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-05-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="811.04">05</tspan></text>
+<text id="step-05-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="810.98">Synthetic Dataset</tspan></text>
+<rect id="step-06-badge" x="70" y="822" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-06-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="840.04">06</tspan></text>
+<text id="step-06-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="839.98">Ingestion Framework</tspan></text>
+<rect id="step-07-badge" x="70" y="851" width="36" height="26" rx="5" fill="#DCF2E7" stroke="none" stroke-width="1"/>
+<text id="step-07-number" x="78" fill="#155D46" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="869.04">07</tspan></text>
+<text id="step-07-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="868.98">Manual Connector</tspan></text>
+<rect id="m2" x="533" y="442" width="470" height="454" rx="16" fill="#FFFFFF" stroke="#7290B8" stroke-width="2"/>
+<rect id="m2-label" x="553" y="462" width="52" height="32" rx="6" fill="#DCEAFF" stroke="none" stroke-width="1"/>
+<text id="m2-id" x="565" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="600"><tspan x="565" y="482.92">M2</tspan></text>
+<text id="m2-name" x="618" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600"><tspan x="618" y="485.56">Health Intelligence</tspan></text>
+<text id="m2-note" x="555" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="555" y="517.16">Steps 08–14 · текущий milestone</tspan></text>
+<rect id="step-08-badge" x="555" y="532" width="36" height="26" rx="5" fill="#E0ECFF" stroke="none" stroke-width="1"/>
+<text id="step-08-number" x="563" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="563" y="550.04">08</tspan></text>
+<a href="https://github.com/ipastin/phisys/pull/7"><text id="step-08-evidence" x="909" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400"><tspan x="909" y="548.22">#7</tspan></text></a>
+<text id="step-08-title" x="601" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="601" y="549.98">Metric Registry</tspan></text>
+<rect id="step-09-badge" x="555" y="572" width="36" height="26" rx="5" fill="#E0ECFF" stroke="none" stroke-width="1"/>
+<text id="step-09-number" x="563" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="563" y="590.04">09</tspan></text>
+<a href="https://github.com/ipastin/phisys/pull/7"><text id="step-09-evidence" x="909" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400"><tspan x="909" y="588.22">#7</tspan></text></a>
+<text id="step-09-title" x="601" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="601" y="589.98">Quality Engine</tspan></text>
+<rect id="step-10-badge" x="555" y="612" width="36" height="26" rx="5" fill="#E0ECFF" stroke="none" stroke-width="1"/>
+<text id="step-10-number" x="563" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="563" y="630.04">10</tspan></text>
+<a href="https://github.com/ipastin/phisys/pull/8"><text id="step-10-evidence" x="909" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400"><tspan x="909" y="628.22">#8</tspan></text></a>
+<text id="step-10-title" x="601" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="601" y="629.98">Baseline Engine</tspan></text>
+<rect id="step-11-badge" x="555" y="652" width="36" height="26" rx="5" fill="#E0ECFF" stroke="none" stroke-width="1"/>
+<text id="step-11-number" x="563" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="563" y="670.04">11</tspan></text>
+<a href="https://github.com/ipastin/phisys/pull/11"><text id="step-11-evidence" x="909" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400"><tspan x="909" y="668.22">#11</tspan></text></a>
+<text id="step-11-title" x="601" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="601" y="669.98">Trend / Period Comparison</tspan></text>
+<rect id="step-12-badge" x="555" y="692" width="36" height="26" rx="5" fill="#FFF0DA" stroke="none" stroke-width="1"/>
+<text id="step-12-number" x="563" fill="#83440D" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="563" y="710.04">12</tspan></text>
+<a href="https://github.com/ipastin/phisys/pull/13"><text id="step-12-evidence" x="909" fill="#83440D" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400"><tspan x="909" y="708.22">#13</tspan></text></a>
+<text id="step-12-title" x="601" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="601" y="709.98">State Snapshot / Diff · 12.1</tspan></text>
+<rect id="step-13-badge" x="555" y="732" width="36" height="26" rx="5" fill="#FFF0DA" stroke="none" stroke-width="1"/>
+<text id="step-13-number" x="563" fill="#83440D" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="563" y="750.04">13</tspan></text>
+<a href="https://github.com/ipastin/phisys/pull/16"><text id="step-13-evidence" x="909" fill="#83440D" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400"><tspan x="909" y="748.22">#16</tspan></text></a>
+<a href="https://github.com/ipastin/phisys/pull/17"><text id="step-13-evidence-a13" x="943" fill="#83440D" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400"><tspan x="943" y="748.22">#17</tspan></text></a>
+<text id="step-13-title" x="601" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="601" y="749.98">Meaningfulness · held / A13</tspan></text>
+<rect id="step-14-panel" x="548" y="770" width="435" height="35" rx="7" fill="#EEF4FC" stroke="#7990B0" stroke-width="1"/>
+<rect id="step-14-badge" x="555" y="772" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-14-number" x="563" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="563" y="790.04">14</tspan></text>
+<text id="step-14-title" x="601" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600"><tspan x="601" y="789.98">What Changed · сервис без LLM</tspan></text>
+<rect id="m2-block" x="555" y="813" width="425" height="67" rx="10" fill="#EFF4FA" stroke="none" stroke-width="1"/>
+<text id="m2-block-heading" x="569" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600"><tspan x="569" y="836.1">До завершения M2</tspan></text>
+<text id="m2-block-body" x="569" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="569" y="857.16">Полный снимок состояния, правила показа</tspan><tspan x="569" y="874.8">и ранжирование изменений. Затем What Changed.</tspan></text>
+<rect id="m3" x="1023" y="442" width="465" height="454" rx="16" fill="#FFFFFF" stroke="#C7D3E1" stroke-width="1"/>
+<rect id="m3-label" x="1043" y="462" width="52" height="32" rx="6" fill="#E9EEF5" stroke="none" stroke-width="1"/>
+<text id="m3-id" x="1055" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="600"><tspan x="1055" y="482.92">M3</tspan></text>
+<text id="m3-name" x="1108" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600"><tspan x="1108" y="485.56">Product Experience</tspan></text>
+<text id="m3-note" x="1045" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="1045" y="517.16">Steps 15–19 · Android · Vertical Slice A</tspan></text>
+<rect id="step-15-badge" x="1045" y="532" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-15-number" x="1053" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1053" y="550.04">15</tspan></text>
+<text id="step-15-title" x="1091" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1091" y="549.98">Mobile shell</tspan></text>
+<rect id="step-16-badge" x="1045" y="572" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-16-number" x="1053" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1053" y="590.04">16</tspan></text>
+<text id="step-16-title" x="1091" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1091" y="589.98">Today · включает What Changed</tspan></text>
+<rect id="step-17-badge" x="1045" y="612" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-17-number" x="1053" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1053" y="630.04">17</tspan></text>
+<text id="step-17-title" x="1091" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1091" y="629.98">Insight / Metric Detail</tspan></text>
+<rect id="step-18-badge" x="1045" y="652" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-18-number" x="1053" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1053" y="670.04">18</tspan></text>
+<text id="step-18-title" x="1091" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1091" y="669.98">Timeline</tspan></text>
+<rect id="step-19-badge" x="1045" y="692" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-19-number" x="1053" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1053" y="710.04">19</tspan></text>
+<text id="step-19-title" x="1091" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1091" y="709.98">Health Connect</tspan></text>
+<rect id="m3-android" x="1045" y="750" width="421" height="125" rx="10" fill="#EFF4FA" stroke="none" stroke-width="1"/>
+<text id="m3-android-heading" x="1059" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600"><tspan x="1059" y="773.1">Android — основной surface Personal Beta</tspan></text>
+<text id="m3-android-body" x="1059" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="1059" y="794.16">Health Connect → canonical data → Today.</tspan><tspan x="1059" y="811.8">Далее Records, Ask и ручной ввод в Android.</tspan><tspan x="1059" y="829.44">Web Companion начинается после beta gate.</tspan></text>
+<rect id="m4" x="48" y="920" width="710" height="390" rx="16" fill="#FFFFFF" stroke="#C7D3E1" stroke-width="1"/>
+<rect id="m4-label" x="68" y="940" width="52" height="32" rx="6" fill="#E9EEF5" stroke="none" stroke-width="1"/>
+<text id="m4-id" x="80" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="600"><tspan x="80" y="960.92">M4</tspan></text>
+<text id="m4-name" x="133" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600"><tspan x="133" y="963.56">Clinical Data + AI</tspan></text>
+<text id="m4-note" x="70" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="70" y="995.16">Steps 20–30 · Slices B и C</tspan></text>
+<rect id="step-20-badge" x="70" y="1012" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-20-number" x="78" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="1030.04">20</tspan></text>
+<text id="step-20-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="1029.98">PDF storage / parser</tspan></text>
+<rect id="step-21-badge" x="70" y="1048" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-21-number" x="78" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="1066.04">21</tspan></text>
+<text id="step-21-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="1065.98">Extraction Review</tspan></text>
+<rect id="step-22-badge" x="70" y="1084" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-22-number" x="78" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="1102.04">22</tspan></text>
+<text id="step-22-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="1101.98">Records UI</tspan></text>
+<rect id="step-23-badge" x="70" y="1120" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-23-number" x="78" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="1138.04">23</tspan></text>
+<text id="step-23-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="1137.98">Safety Engine v0.1</tspan></text>
+<rect id="step-24-badge" x="70" y="1156" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-24-number" x="78" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="1174.04">24</tspan></text>
+<text id="step-24-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="1173.98">Context Engine v0.1</tspan></text>
+<rect id="step-25-badge" x="70" y="1192" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-25-number" x="78" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="78" y="1210.04">25</tspan></text>
+<text id="step-25-title" x="116" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="116" y="1209.98">Model Gateway</tspan></text>
+<rect id="step-26-badge" x="400" y="1012" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-26-number" x="408" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="408" y="1030.04">26</tspan></text>
+<text id="step-26-title" x="446" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="446" y="1029.98">Agent Router</tspan></text>
+<rect id="step-27-badge" x="400" y="1048" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-27-number" x="408" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="408" y="1066.04">27</tspan></text>
+<text id="step-27-title" x="446" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="446" y="1065.98">Initial Skills</tspan></text>
+<rect id="step-28-badge" x="400" y="1084" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-28-number" x="408" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="408" y="1102.04">28</tspan></text>
+<text id="step-28-title" x="446" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="446" y="1101.98">Claim Pipeline</tspan></text>
+<rect id="step-29-badge" x="400" y="1120" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-29-number" x="408" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="408" y="1138.04">29</tspan></text>
+<text id="step-29-title" x="446" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="446" y="1137.98">AI UX</tspan></text>
+<rect id="step-30-badge" x="400" y="1156" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-30-number" x="408" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="408" y="1174.04">30</tspan></text>
+<text id="step-30-title" x="446" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="446" y="1173.98">Conversational Symptom Write</tspan></text>
+<rect id="m4-slices" x="70" y="1235" width="666" height="55" rx="10" fill="#EFF4FA" stroke="none" stroke-width="1"/>
+<text id="m4-slices-heading" x="84" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600"><tspan x="84" y="1258.1">Контрольные точки</tspan></text>
+<text id="m4-slices-body" x="84" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="84" y="1279.16">Slice B · после Step 21.  Slice C · после Step 30.</tspan></text>
+<rect id="m5" x="778" y="920" width="710" height="390" rx="16" fill="#FFFFFF" stroke="#C7D3E1" stroke-width="1"/>
+<rect id="m5-label" x="798" y="940" width="52" height="32" rx="6" fill="#E9EEF5" stroke="none" stroke-width="1"/>
+<text id="m5-id" x="810" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="600"><tspan x="810" y="960.92">M5</tspan></text>
+<text id="m5-name" x="863" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600"><tspan x="863" y="963.56">Hardening</tspan></text>
+<text id="m5-note" x="800" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="800" y="995.16">Steps 31–39 · качество и готовность Personal Beta</tspan></text>
+<rect id="step-31-badge" x="800" y="1012" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-31-number" x="808" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="808" y="1030.04">31</tspan></text>
+<text id="step-31-title" x="846" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="846" y="1029.98">Provenance Inspector</tspan></text>
+<rect id="step-32-badge" x="800" y="1048" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-32-number" x="808" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="808" y="1066.04">32</tspan></text>
+<text id="step-32-title" x="846" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="846" y="1065.98">Audit</tspan></text>
+<rect id="step-33-badge" x="800" y="1084" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-33-number" x="808" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="808" y="1102.04">33</tspan></text>
+<text id="step-33-title" x="846" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="846" y="1101.98">Observability</tspan></text>
+<rect id="step-34-badge" x="800" y="1120" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-34-number" x="808" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="808" y="1138.04">34</tspan></text>
+<text id="step-34-title" x="846" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="846" y="1137.98">Security Hardening</tspan></text>
+<rect id="step-35-badge" x="800" y="1156" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-35-number" x="808" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="808" y="1174.04">35</tspan></text>
+<text id="step-35-title" x="846" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="846" y="1173.98">Safety Evals</tspan></text>
+<rect id="step-36-badge" x="1130" y="1012" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-36-number" x="1138" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1138" y="1030.04">36</tspan></text>
+<text id="step-36-title" x="1176" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1176" y="1029.98">Analytics Evals</tspan></text>
+<rect id="step-37-badge" x="1130" y="1048" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-37-number" x="1138" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1138" y="1066.04">37</tspan></text>
+<text id="step-37-title" x="1176" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1176" y="1065.98">Agent Evals</tspan></text>
+<rect id="step-38-badge" x="1130" y="1084" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-38-number" x="1138" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1138" y="1102.04">38</tspan></text>
+<text id="step-38-title" x="1176" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="400"><tspan x="1176" y="1101.98">Export / Delete</tspan></text>
+<rect id="step-39-panel" x="1123" y="1118" width="332" height="35" rx="7" fill="#EEF4FC" stroke="#7990B0" stroke-width="1"/>
+<rect id="step-39-badge" x="1130" y="1120" width="36" height="26" rx="5" fill="#EBEFF4" stroke="none" stroke-width="1"/>
+<text id="step-39-number" x="1138" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600"><tspan x="1138" y="1138.04">39</tspan></text>
+<text id="step-39-title" x="1176" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600"><tspan x="1176" y="1137.98">Personal Beta Gate</tspan></text>
+<rect id="m5-security" x="800" y="1235" width="666" height="55" rx="10" fill="#EFF4FA" stroke="none" stroke-width="1"/>
+<text id="m5-security-heading" x="814" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600"><tspan x="814" y="1258.1">Часть базовых механизмов уже есть</tspan></text>
+<text id="m5-security-body" x="814" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="814" y="1279.16">Person-scoped RLS и provenance в main. Audit решений о верификации — в draft #18.</tspan></text>
+<rect id="surfaces" x="48" y="1332" width="1440" height="300" rx="16" fill="#FFFFFF" stroke="#C7D3E1" stroke-width="1"/>
+<text id="surface-title" x="71" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="27" font-weight="700"><tspan x="71" y="1377.38">Personal Beta и расширение платформ</tspan></text>
+<text id="surface-deck" x="72" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="400"><tspan x="72" y="1407.04">S0 — Android-бета по итогам Step 39. S1–S5 — rollout после выполнения условий beta gate.</tspan></text>
+<rect id="s0-panel" x="71" y="1429" width="222" height="139" rx="9" fill="#EEF4FC" stroke="#C7D3E1" stroke-width="1"/>
+<text id="s0-phase" x="83" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700"><tspan x="83" y="1454.1">S0</tspan></text>
+<text id="s0-heading" x="83" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="83" y="1479.04">Android Personal Beta</tspan></text>
+<text id="s0-body" x="83" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="83" y="1504.16">Health Connect, Today,</tspan><tspan x="83" y="1521.8">Records, Ask, ручной</tspan><tspan x="83" y="1539.44">ввод и симптомы.</tspan></text>
+<rect id="s1-panel" x="304" y="1429" width="222" height="139" rx="9" fill="#F4F6FA" stroke="#C7D3E1" stroke-width="1"/>
+<text id="s1-phase" x="316" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700"><tspan x="316" y="1454.1">S1</tspan></text>
+<text id="s1-heading" x="316" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="316" y="1479.04">Web Companion</tspan></text>
+<text id="s1-body" x="316" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="316" y="1504.16">Records, wide charts,</tspan><tspan x="316" y="1521.8">история, Appointment Prep,</tspan><tspan x="316" y="1539.44">AI split view, export/share.</tspan></text>
+<rect id="s2-panel" x="537" y="1429" width="222" height="139" rx="9" fill="#F4F6FA" stroke="#C7D3E1" stroke-width="1"/>
+<text id="s2-phase" x="549" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700"><tspan x="549" y="1454.1">S2</tspan></text>
+<text id="s2-heading" x="549" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="549" y="1479.04">Ambient Android</tspan></text>
+<text id="s2-body" x="549" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="549" y="1504.16">What Changed / Today</tspan><tspan x="549" y="1521.8">widgets, Quick Actions,</tspan><tspan x="549" y="1539.44">privacy-aware push.</tspan></text>
+<rect id="s3-panel" x="770" y="1429" width="222" height="139" rx="9" fill="#F4F6FA" stroke="#C7D3E1" stroke-width="1"/>
+<text id="s3-phase" x="782" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700"><tspan x="782" y="1454.1">S3</tspan></text>
+<text id="s3-heading" x="782" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="782" y="1479.04">iOS</tspan></text>
+<text id="s3-body" x="782" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="782" y="1504.16">iOS app, HealthKit</tspan><tspan x="782" y="1521.8">и WidgetKit.</tspan></text>
+<rect id="s4-panel" x="1003" y="1429" width="222" height="139" rx="9" fill="#F4F6FA" stroke="#C7D3E1" stroke-width="1"/>
+<text id="s4-phase" x="1015" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700"><tspan x="1015" y="1454.1">S4</tspan></text>
+<text id="s4-heading" x="1015" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="1015" y="1479.04">Watch</tspan></text>
+<text id="s4-body" x="1015" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="1015" y="1504.16">Wear OS, затем</tspan><tspan x="1015" y="1521.8">Apple Watch после iOS.</tspan></text>
+<rect id="s5-panel" x="1236" y="1429" width="222" height="139" rx="9" fill="#F4F6FA" stroke="#C7D3E1" stroke-width="1"/>
+<text id="s5-phase" x="1248" fill="#5A6779" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700"><tspan x="1248" y="1454.1">S5</tspan></text>
+<text id="s5-heading" x="1248" fill="#182436" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700"><tspan x="1248" y="1479.04">Ecosystem</tspan></text>
+<text id="s5-body" x="1248" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="1248" y="1504.16">MCP, approved API, FHIR,</tspan><tspan x="1248" y="1521.8">secure partner/share.</tspan></text>
+<text id="surface-note" x="72" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="72" y="1604.16">Voice и email / messenger описаны в Surface Strategy. Очерёдность rollout может измениться по результатам исследований.</tspan></text>
+<text id="footer-label" x="48" fill="#43546B" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600"><tspan x="48" y="1663.16">Источники</tspan></text>
+<a href="https://github.com/ipastin/phisys/blob/3679cc0e206c5b6e8ec6e56f0c696e25a6121663/docs/project-spec/v0.4.0/11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md#8-milestones"><text id="footer-project" x="144" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="144" y="1663.16">Project Spec v0.4.0 · §8, §9.1</tspan></text></a>
+<a href="https://github.com/ipastin/phisys/blob/3679cc0e206c5b6e8ec6e56f0c696e25a6121663/docs/project-spec/v0.4.0/17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-10-10-26_04-03-47__v0.4.0.md#11-delivery-roadmap"><text id="footer-strategy" x="391" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="391" y="1663.16">Surface Strategy · §11</tspan></text></a>
+<a href="https://github.com/ipastin/phisys/tree/3679cc0e206c5b6e8ec6e56f0c696e25a6121663"><text id="footer-main" x="591" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="591" y="1663.16">main · 3679cc0</tspan></text></a>
+<a href="https://github.com/ipastin/phisys/pull/17"><text id="footer-a13" x="730" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="730" y="1663.16">A13 · PR #17</tspan></text></a>
+<a href="https://github.com/ipastin/phisys/pull/18"><text id="footer-draft" x="870" fill="#1A4D96" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400"><tspan x="870" y="1663.16">draft PR #18</tspan></text></a>
+</svg>

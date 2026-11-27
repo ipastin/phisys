@@ -32,9 +32,24 @@ export async function readCurrentSleepFacts(
   let rollbackFailure: Error | undefined;
   try {
     await db.query('BEGIN READ ONLY');
-    await db.query('SET LOCAL ROLE myphisys_analytics');
+    // Roles are cluster-wide, so use the policy in this database to identify its provisioned role.
+    const result = await db.query<{ role_name: string }>(
+      `SELECT role_name
+       FROM pg_catalog.pg_policies
+       CROSS JOIN LATERAL unnest(roles) AS policy_role(role_name)
+       WHERE schemaname='health' AND tablename='fact' AND policyname='person_scope_analytics'
+         AND role_name IN ('phisys_analytics', 'myphisys_analytics')`,
+    );
+    if (result.rows.length !== 1)
+      throw new Error('Expected one provisioned analytics role');
+    const role = result.rows[0]?.role_name;
+    if (role === 'phisys_analytics')
+      await db.query('SET LOCAL ROLE phisys_analytics');
+    else if (role === 'myphisys_analytics')
+      await db.query('SET LOCAL ROLE myphisys_analytics');
+    else throw new Error('Unexpected analytics role');
     await db.query("SELECT set_config('app.person_id', $1, true)", [personId]);
-    const result = await db.query<SleepFactRow>(
+    const facts = await db.query<SleepFactRow>(
       `SELECT f.id, f.value, f.effective, f.verification, f.epistemic,
               EXISTS (
                 SELECT 1 FROM health.conflict c
@@ -69,7 +84,7 @@ export async function readCurrentSleepFacts(
       [personId, startDate, endDateExclusive],
     );
     await db.query('COMMIT');
-    return result.rows;
+    return facts.rows;
   } catch (error) {
     try {
       await db.query('ROLLBACK');

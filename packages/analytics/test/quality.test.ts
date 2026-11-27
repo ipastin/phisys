@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import type { SleepFactRow } from '@myphisys/database';
+import type { SleepFactRow } from '@phisys/database';
 import { goldenRecords } from '../../ingestion/test/golden.js';
 import {
   evaluateSleepBaselineTrend,

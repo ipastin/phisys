@@ -1,2 +1,2 @@
-import { fixture } from '@myphisys/analytics';
+import { fixture } from '@phisys/analytics';
 export const forbidden = fixture;

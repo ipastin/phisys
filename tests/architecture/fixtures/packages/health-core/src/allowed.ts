@@ -1,2 +1,2 @@
-import { fixture } from '@myphisys/contracts';
+import { fixture } from '@phisys/contracts';
 export const allowed = fixture;

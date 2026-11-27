@@ -1,5 +1,5 @@
 {
-  "name": "@myphisys/architecture-guardrails",
+  "name": "@phisys/architecture-guardrails",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,7 @@
     ".": "./dist/index.js"
   },
   "bin": {
-    "myphisys-architecture": "./dist/cli.js"
+    "phisys-architecture": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

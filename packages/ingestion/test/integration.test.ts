@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { Pool, uuidv7, withPerson } from '@myphisys/database';
-import { conceptIds } from '@myphisys/health-core';
+import { Pool, uuidv7, withPerson } from '@phisys/database';
+import { conceptIds } from '@phisys/health-core';
 import { ingest, type SourceRecord } from '../src/index.js';
 import { goldenRecords } from './golden.js';
 
@@ -11,7 +11,7 @@ if (!process.env.DATABASE_URL || process.env.M1_DISPOSABLE_DB !== '1')
 
 const admin = new Pool({ connectionString: process.env.DATABASE_URL });
 const appUrl = new URL(process.env.DATABASE_URL);
-appUrl.username = 'myphisys_m1_test';
+appUrl.username = 'phisys_m1_test';
 appUrl.password = '';
 const app = new Pool({ connectionString: appUrl.toString() });
 const personId = uuidv7();
@@ -20,9 +20,9 @@ const goldenPersonId = uuidv7();
 
 beforeAll(async () => {
   await admin.query(
-    "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='myphisys_m1_test') THEN CREATE ROLE myphisys_m1_test LOGIN; END IF; END $$",
+    "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='phisys_m1_test') THEN CREATE ROLE phisys_m1_test LOGIN; END IF; END $$",
   );
-  await admin.query('GRANT myphisys_domain TO myphisys_m1_test');
+  await admin.query('GRANT phisys_domain TO phisys_m1_test');
   await admin.query('INSERT INTO identity.person(id) VALUES ($1),($2),($3)', [
     personId,
     otherPersonId,

@@ -1,16 +1,16 @@
 ---
-title: MyPhisys — Codex instructions
+title: Phisys — Codex instructions
 created: "15-10-26 09-37-26"
-updated: "15-10-26 14-16-46"
+updated: "27-11-26 14-41-45"
 timezone: Europe/Moscow
-version: 0.2.9
-commit: "docs(codex): link updated M0 review artifacts"
+version: "0.2.10"
+commit: "docs(brand): adopt Phisys project naming"
 ---
 
-# MyPhisys
+# Phisys
 
-MyPhisys — Personal Health Intelligence System. Repository: `ipastin/phisys`.
-Product domain: https://phisys.cloud. Не переименовывай бренд в Phisys.
+Phisys — Personal Health Intelligence System. Repository: `ipastin/phisys`.
+Product domain: https://phisys.cloud. Используй написание **Phisys** на всех платформах и в материалах проекта.
 Общение — по-русски, на «ты»; code identifiers и общепринятые технические термины — на английском.
 
 ## Начало работы
@@ -40,7 +40,7 @@ explicit invariant → accepted ADR → domain specification → implementation 
   Connector ingestion проходит Raw → validation → canonical без общего требования подтверждать каждый факт.
 - Product agent получает только scoped, разрешённые tools; generic SQL/network/filesystem capability ему не выдаётся.
   Это ограничение product runtime, а не запрет Codex читать файлы и запускать проверки репозитория.
-- Model access проходит через capability alias и Model Gateway; provider memory не заменяет память MyPhisys.
+- Model access проходит через capability alias и Model Gateway; provider memory не заменяет память Phisys.
 - Fallback не ослабляет privacy; health files не отправляются во внешнее хранилище автоматически.
 - Health claims должны опираться на проверяемые данные; uncertainty и недостаток данных должны быть видимыми.
 - Surface Strategy распределяет capabilities по задачам surfaces; feature parity не является целью.
@@ -51,8 +51,8 @@ explicit invariant → accepted ADR → domain specification → implementation 
 
 ## Scope и разрешения
 
-- Текущий `main` содержит merged documentation и source packs. [Onboarding audit](docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-audit.md)
-  и [утверждённый M0 scope](.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-15-10-26_14-16-46__v0.3.2__docs-plan.md) не означают немедленного старта application implementation: владелец выбрал «старт позже».
+- Состояние реализации и ссылки на проверки приведены в [карте проекта](docs/SOURCE_OF_TRUTH.md#состояние-разработки-и-дизайна). [Onboarding audit](docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-27-11-26_14-41-45__v0.3.3__docs-audit.md)
+  и [утверждённый M0 scope](.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-27-11-26_14-41-45__v0.3.3__docs-plan.md) фиксируют исходные решения M0. Для новой реализации сверяй затронутый milestone и актуальный scope.
 - Работай в отдельной `codex/*` ветке и через PR. Не создавай и не меняй `main` напрямую.
 - Merge, deploy, DNS/domain changes, secrets, Figma/shared-system writes требуют отдельного разрешения.
 - Для изменения canonical model, safety/privacy, accepted ADR, IA или утверждённого UX сначала покажи decision и trade-offs.
@@ -64,7 +64,7 @@ explicit invariant → accepted ADR → domain specification → implementation 
 
 - До редактирования найди затронутые callers, tests, fixtures, config и exports; сохрани validation/error handling.
 - Запускай существующие проверки, подходящие изменению. Для новой нетривиальной логики нужен meaningful test.
-- Не объявляй планируемый script работающим: сейчас package scripts, application code и CI отсутствуют.
+- Проверяй доступные scripts в `package.json` и фактический результат CI на нужном commit.
 - В финале укажи изменения, фактически выполненные checks, `not_run` / `needs_review`, оставшиеся риски и следующий шаг.
 - Commit messages: Conventional Commits. Документы: SemVer, created/updated в `dd-mm-yy hh-mm-ss`, timezone.
   Правило стабильных имён и формат остальных Markdown-файлов описаны в [.agent/PLANS.md](.agent/PLANS.md).
