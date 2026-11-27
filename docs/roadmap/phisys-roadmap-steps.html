@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phisys — от записей сна до Web-кабинета</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&family=Noto+Sans+TC:wght@400;500;600&family=Noto+Serif+TC:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;   /* white-smoke */
+      --color-ink:     #2d3142;   /* jet-black */
+      --color-muted:   #4f5d75;   /* blue-slate */
+      --color-accent:  #bf4520;   /* burnt-tangerine */
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    /* The SVG holds its readable width (min-width == the viewBox width, so the
+       type ramp is never silently scaled down). This wrapper lets a narrow
+       screen scroll the diagram instead of the whole page. */
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+    /* Paper has no scrollbar, so the local scroller would clip instead of
+       scroll. Let the diagram scale down to the sheet: smaller but whole
+       beats sharp but cut off. Must come after the svg rule above - a media
+       query adds no specificity, so a later plain rule would win. */
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+
+:root{color-scheme:light} body{display:block;padding:0;min-height:100vh}
+main{width:min(100%,1408px);margin:auto;padding:16px 32px 32px}
+.frame{max-width:none;width:100%}.diagram-container{width:100%;overflow-x:auto}
+svg{width:100%;min-width:1280px;display:block}
+h1.sr{position:absolute;clip-path:inset(50%);overflow:hidden;width:1px;height:1px}
+nav{border-top:1px solid #bfc0c0;padding:14px 20px;display:flex;flex-wrap:wrap;gap:10px 28px}
+a{color:#2e5aa8;text-underline-offset:3px;font-size:14px}
+.mobile-note{display:none} :focus-visible{outline:2px solid #2e5aa8;outline-offset:2px}
+@media(max-width:700px){main{padding:8px}.mobile-note{display:block;font-size:15px;line-height:1.45;padding:12px 8px 16px;color:#4f5d75}.mobile-note strong{color:#bf4520}}
+@media print{main{width:100%;padding:0}.diagram-container{overflow:visible}svg{min-width:0}nav,.mobile-note{display:none}}
+</style>
+</head>
+<body><main><h1 class="sr">Phisys — от записей сна до Web-кабинета</h1><p class="mobile-note"><strong>Сейчас — аналитика сна.</strong> Дальше предстоит выбрать, какие изменения показывать на Android. Web запланирован после Personal Beta. Проведи по схеме влево, чтобы увидеть следующие этапы.</p><div class="diagram-container" role="region" aria-label="Дорожная карта. На узком экране прокручивается по горизонтали" tabindex="0"><svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="phisys-roadmap-steps-title phisys-roadmap-steps-desc">
+<title id="phisys-roadmap-steps-title">Phisys — от записей сна до Web-кабинета</title>
+<desc id="phisys-roadmap-steps-desc">Данные уже сохраняются, аналитика сна частично готова, а впереди выбор изменений для Today, Android, анализы и AI, выпуск Personal Beta и затем Web-кабинет.</desc>
+<rect x="0" y="0" width="1280" height="720" fill="#f5f5f5"/>
+<text x="56" y="48" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="13" font-weight="600" text-anchor="start" >PHISYS  /  ROADMAP</text>
+<text x="1224" y="48" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="end" >27 НОЯБРЯ 2026</text>
+<text x="56" y="108" font-family="'Instrument Serif', 'Noto Serif', Georgia, serif" fill="#2d3142" font-size="45" font-weight="400" text-anchor="start" >От записей сна до Web-кабинета</text>
+<text x="56" y="145" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="18" font-weight="400" text-anchor="start" >Сначала Phisys учится замечать изменения. Первый пользовательский экран появится в Android.</text>
+<line x1="56" y1="173" x2="1224" y2="173" stroke="#bfc0c0"/>
+<rect x="64" y="280" width="192" height="40" fill="rgba(45,49,66,0.05)" data-role="rail" data-step="data" data-index="1"/>
+<text x="160" y="205" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="600" text-anchor="middle" data-role="number" data-step="data">01</text>
+<text x="160" y="235" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="16" font-weight="600" text-anchor="middle" >Готово в main</text>
+<line x1="160" x2="160" y1="244" y2="264" stroke="#bfc0c0"/>
+<circle cx="160" cy="300" r="32" fill="#f5f5f5" stroke="#2d3142" stroke-width="1" data-role="medallion" data-step="data"/>
+<g aria-hidden="true" transform="translate(148 288)" fill="none" stroke="#2d3142" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0" /> <path d="M4 6v6a8 3 0 0 0 16 0v-6" /> <path d="M4 12v6a8 3 0 0 0 16 0v-6" /></g>
+<text x="160" y="373" font-family="'Geist', system-ui, sans-serif" fill="#2d3142" font-size="22" font-weight="600" text-anchor="middle" >Записи</text>
+<text x="160" y="404" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >Храним измерения</text>
+<text x="160" y="426" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >и их источники.</text>
+<text x="160" y="459" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle" >M0–M1 · 00–07</text>
+<rect x="256" y="280" width="192" height="40" fill="rgba(191,69,32,0.08)" data-role="rail" data-step="sleep" data-index="2" data-focal="true"/>
+<line x1="256" x2="448" y1="280" y2="280" stroke="#bf4520"/>
+<line x1="256" x2="448" y1="320" y2="320" stroke="#bf4520"/>
+<text x="352" y="205" font-family="'Geist Mono', ui-monospace, monospace" fill="#bf4520" font-size="12" font-weight="600" text-anchor="middle" data-role="number" data-step="sleep">02</text>
+<text x="352" y="235" font-family="'Geist', system-ui, sans-serif" fill="#bf4520" font-size="16" font-weight="600" text-anchor="middle" >Мы здесь</text>
+<line x1="352" x2="352" y1="244" y2="264" stroke="#bf4520"/>
+<circle cx="352" cy="300" r="32" fill="#f5f5f5" stroke="#bf4520" stroke-width="2" data-role="medallion" data-step="sleep" data-focal="true"/>
+<g aria-hidden="true" transform="translate(340 288)" fill="none" stroke="#bf4520" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></g>
+<text x="352" y="373" font-family="'Geist', system-ui, sans-serif" fill="#bf4520" font-size="22" font-weight="600" text-anchor="middle" >Аналитика сна</text>
+<text x="352" y="404" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >Сравниваем недели,</text>
+<text x="352" y="426" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >видим отклонения.</text>
+<text x="352" y="459" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle" >M2 · 08–14</text>
+<rect x="448" y="280" width="192" height="40" fill="rgba(45,49,66,0.05)" data-role="rail" data-step="android" data-index="3"/>
+<text x="544" y="205" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="600" text-anchor="middle" data-role="number" data-step="android">03</text>
+<text x="544" y="235" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="16" font-weight="400" text-anchor="middle" >Далее</text>
+<line x1="544" x2="544" y1="244" y2="264" stroke="#bfc0c0"/>
+<circle cx="544" cy="300" r="32" fill="#f5f5f5" stroke="#2d3142" stroke-width="1" data-role="medallion" data-step="android"/>
+<g aria-hidden="true" transform="translate(532 288)" fill="none" stroke="#2d3142" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-14" /> <path d="M11 4h2" /> <path d="M12 17v.01" /></g>
+<text x="544" y="373" font-family="'Geist', system-ui, sans-serif" fill="#2d3142" font-size="22" font-weight="600" text-anchor="middle" >Android</text>
+<text x="544" y="404" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >Показываем результат</text>
+<text x="544" y="426" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >в Today на телефоне.</text>
+<text x="544" y="459" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle" >M3 · 15–19</text>
+<rect x="640" y="280" width="192" height="40" fill="rgba(45,49,66,0.09)" data-role="rail" data-step="records" data-index="4"/>
+<text x="736" y="205" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="600" text-anchor="middle" data-role="number" data-step="records">04</text>
+<text x="736" y="235" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="16" font-weight="400" text-anchor="middle" >В плане</text>
+<line x1="736" x2="736" y1="244" y2="264" stroke="#bfc0c0"/>
+<circle cx="736" cy="300" r="32" fill="#f5f5f5" stroke="#2d3142" stroke-width="1" data-role="medallion" data-step="records"/>
+<g aria-hidden="true" transform="translate(724 288)" fill="none" stroke="#2d3142" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /></g>
+<text x="736" y="373" font-family="'Geist', system-ui, sans-serif" fill="#2d3142" font-size="22" font-weight="600" text-anchor="middle" >Анализы и AI</text>
+<text x="736" y="404" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >Читаем PDF, отвечаем</text>
+<text x="736" y="426" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >со ссылкой на запись.</text>
+<text x="736" y="459" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle" >M4 · 20–30</text>
+<rect x="832" y="280" width="192" height="40" fill="rgba(45,49,66,0.05)" data-role="rail" data-step="beta" data-index="5"/>
+<text x="928" y="205" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="600" text-anchor="middle" data-role="number" data-step="beta">05</text>
+<text x="928" y="235" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="16" font-weight="400" text-anchor="middle" >В плане</text>
+<line x1="928" x2="928" y1="244" y2="264" stroke="#bfc0c0"/>
+<circle cx="928" cy="300" r="32" fill="#f5f5f5" stroke="#2d3142" stroke-width="1" data-role="medallion" data-step="beta"/>
+<g aria-hidden="true" transform="translate(916 288)" fill="none" stroke="#2d3142" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6" /> <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /> <path d="M8 11v-4a4 4 0 1 1 8 0v4" /></g>
+<text x="928" y="373" font-family="'Geist', system-ui, sans-serif" fill="#2d3142" font-size="22" font-weight="600" text-anchor="middle" >Personal Beta</text>
+<text x="928" y="404" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >Проверяем защиту</text>
+<text x="928" y="426" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >и выпускаем бету.</text>
+<text x="928" y="459" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle" >M5 · 31–39</text>
+<rect x="1024" y="280" width="192" height="40" fill="rgba(45,49,66,0.09)" data-role="rail" data-step="web" data-index="6"/>
+<text x="1120" y="205" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="600" text-anchor="middle" data-role="number" data-step="web">06</text>
+<text x="1120" y="235" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="16" font-weight="400" text-anchor="middle" >После беты</text>
+<line x1="1120" x2="1120" y1="244" y2="264" stroke="#bfc0c0"/>
+<circle cx="1120" cy="300" r="32" fill="#f5f5f5" stroke="#2d3142" stroke-width="1" data-role="medallion" data-step="web"/>
+<g aria-hidden="true" transform="translate(1108 288)" fill="none" stroke="#2d3142" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10" /> <path d="M7 20h10" /> <path d="M9 16v4" /> <path d="M15 16v4" /></g>
+<text x="1120" y="373" font-family="'Geist', system-ui, sans-serif" fill="#2d3142" font-size="22" font-weight="600" text-anchor="middle" >Web-кабинет</text>
+<text x="1120" y="404" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >Изучаем историю</text>
+<text x="1120" y="426" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="15" font-weight="400" text-anchor="middle" >и сравниваем периоды.</text>
+<text x="1120" y="459" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle" >S1 · Web Companion</text>
+<line x1="56" y1="496" x2="1224" y2="496" stroke="#bfc0c0"/>
+<text x="56" y="538" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="13" font-weight="600" text-anchor="start" >СЕЙЧАС · ШАГИ 12–13     /     ДАЛЕЕ · ШАГ 14</text>
+<text x="56" y="582" font-family="'Instrument Serif', 'Noto Serif', Georgia, serif" fill="#2d3142" font-size="32" font-weight="400" text-anchor="start" >Когда изменение сна заслуживает карточки в Today?</text>
+<text x="56" y="619" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="18" font-weight="400" text-anchor="start" >Одна короткая ночь, несколько подряд и пропуски в записях требуют разного ответа.</text>
+<text x="56" y="646" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="17" font-weight="400" text-anchor="start" >Затем нужно реализовать What Changed. Сервис вернёт результат сравнения и укажет записи, на которых он основан.</text>
+<line x1="56" y1="672" x2="1224" y2="672" stroke="#bfc0c0"/>
+<text x="56" y="702" font-family="'Geist Mono', ui-monospace, monospace" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="start" >Срез main · 3679cc0</text>
+<text x="1224" y="702" font-family="'Geist', system-ui, sans-serif" fill="#4f5d75" font-size="13" font-weight="400" text-anchor="end" >PR #18 · подтверждение ручной записи о сне пока в draft</text>
+</svg></div></main></body></html>

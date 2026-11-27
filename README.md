@@ -6,7 +6,7 @@ Phisys is a personal health intelligence system in development, with a planned m
 
 > **Project status:** This repository contains source specifications and backend packages for data intake and sleep analysis. It does not yet provide an end-user app.
 
-[Roadmap overview (SVG)](docs/roadmap/phisys-roadmap.svg) · [Editable Excalidraw roadmap](docs/roadmap/phisys-roadmap.excalidraw) · [Implementation and UX/UI status](docs/SOURCE_OF_TRUTH.md#состояние-разработки-и-дизайна)
+[Roadmap overview (SVG)](docs/roadmap/phisys-roadmap.svg) · [Quick roadmap (HTML)](docs/roadmap/phisys-roadmap-steps.html) · [Editable Excalidraw roadmap](docs/roadmap/phisys-roadmap.excalidraw) · [Implementation and UX/UI status](docs/SOURCE_OF_TRUTH.md#состояние-разработки-и-дизайна)
 
 ## The product we are building
 
@@ -80,8 +80,8 @@ No license file is currently included in this repository.
 
 <!--
 created: "15-10-26 10-56-12"
-updated: "27-11-26 14-41-45"
+updated: "27-11-26 15-21-36"
 timezone: Europe/Moscow
-version: "0.2.2"
-commit: "docs(brand): adopt Phisys project naming"
+version: "0.2.3"
+commit: "docs(roadmap): add HTML overview"
 -->
