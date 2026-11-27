@@ -95,6 +95,7 @@ async function liveSupport(
   personId: string,
   factId: string,
   recordId: string,
+  ignoreTombstoneId: string | null = null,
 ): Promise<{ same: boolean; other: boolean }> {
   const support = await db.query(
     `SELECT COALESCE(bool_or(r.record_id=$3), false) AS same,
@@ -108,13 +109,28 @@ async function liveSupport(
          LEFT JOIN source.quarantine q ON q.person_id=tombstone.person_id AND q.raw_id=tombstone.id
          WHERE tombstone.person_id=r.person_id AND tombstone.record_id=r.record_id
            AND tombstone.version>r.version AND tombstone.operation='delete' AND q.id IS NULL
+           AND tombstone.id IS DISTINCT FROM $4::uuid
        )`,
-    [personId, factId, recordId],
+    [personId, factId, recordId, ignoreTombstoneId],
   );
   return {
     same: support.rows[0]?.same === true,
     other: support.rows[0]?.other === true,
   };
+}
+
+async function markManualSleepSupportChanged(
+  db: PoolClient,
+  personId: string,
+  factId: string,
+) {
+  await db.query(
+    `UPDATE health.fact
+     SET verification_revision=verification_revision+1,
+         verification=CASE WHEN verification='user_verified' THEN 'unverified' ELSE verification END
+     WHERE person_id=$1 AND id=$2 AND concept_id='sleep_duration' AND epistemic='user_reported'`,
+    [personId, factId],
+  );
 }
 
 async function emit(
@@ -273,9 +289,15 @@ export async function ingest(
 
     if (record.operation === 'delete') {
       if (fact && typeof fact.id === 'string') {
-        if (
-          !(await liveSupport(db, record.personId, fact.id, recordId)).other
-        ) {
+        // Find the live support before this accepted tombstone.
+        const support = await liveSupport(
+          db,
+          record.personId,
+          fact.id,
+          recordId,
+          rawId,
+        );
+        if (!support.other) {
           await db.query(
             'UPDATE health.fact SET state=$1 WHERE person_id=$2 AND id=$3',
             ['invalidated', record.personId, fact.id],
@@ -287,6 +309,8 @@ export async function ingest(
             'health.invalidated',
             fact.id,
           );
+        } else if (support.same && fact.concept_id === 'sleep_duration') {
+          await markManualSleepSupportChanged(db, record.personId, fact.id);
         }
       }
       return { state: 'imported', rawId };
@@ -328,6 +352,8 @@ export async function ingest(
           'INSERT INTO health.provenance (person_id, fact_id, raw_id, transformation) VALUES ($1,$2,$3,$4)',
           [record.personId, fact.id, rawId, 'm1-map-v1'],
         );
+        if (fact.concept_id === 'sleep_duration')
+          await markManualSleepSupportChanged(db, record.personId, fact.id);
         await emit(
           db,
           record.personId,

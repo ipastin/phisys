@@ -17,6 +17,10 @@ const analyticsUp = await readFile(
   new URL('../migrations/0002_up.sql', import.meta.url),
   'utf8',
 );
+const verificationUp = await readFile(
+  new URL('../migrations/0003_up.sql', import.meta.url),
+  'utf8',
+);
 const down = await readFile(
   new URL('../migrations/0001_down.sql', import.meta.url),
   'utf8',
@@ -25,10 +29,15 @@ const analyticsDown = await readFile(
   new URL('../migrations/0002_down.sql', import.meta.url),
   'utf8',
 );
+const verificationDown = await readFile(
+  new URL('../migrations/0003_down.sql', import.meta.url),
+  'utf8',
+);
 
 beforeAll(async () => {
   await pool.query(up);
   await pool.query(analyticsUp);
+  await pool.query(verificationUp);
 });
 afterAll(async () => {
   await pool.end();
@@ -147,10 +156,19 @@ describe('M1 PostgreSQL foundation', () => {
         ])
       ).rowCount,
     ).toBe(0);
+    await pool.query(verificationDown);
+    expect(
+      (
+        await pool.query(
+          "SELECT to_regclass('identity.person_owner') AS table_name",
+        )
+      ).rows[0]?.table_name,
+    ).toBeNull();
     await pool.query(analyticsDown);
     await pool.query(down);
     await pool.query(up);
     await pool.query(analyticsUp);
+    await pool.query(verificationUp);
     expect(
       (await pool.query("SELECT to_regclass('health.fact') AS table_name"))
         .rows[0]?.table_name,
@@ -159,5 +177,12 @@ describe('M1 PostgreSQL foundation', () => {
       (await pool.query("SELECT to_regrole('myphisys_analytics') AS role_name"))
         .rows[0]?.role_name,
     ).toBe('myphisys_analytics');
+    expect(
+      (
+        await pool.query(
+          "SELECT to_regclass('health.sleep_verification_event') AS table_name",
+        )
+      ).rows[0]?.table_name,
+    ).toBe('health.sleep_verification_event');
   });
 });
