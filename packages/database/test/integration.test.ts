@@ -34,14 +34,48 @@ const verificationDown = await readFile(
   'utf8',
 );
 
+async function migrateAsOwner(...migrations: string[]) {
+  const client = await pool.connect();
+  try {
+    await client.query('SET ROLE myphisys_test_migration_owner');
+    for (const migration of migrations) await client.query(migration);
+  } finally {
+    client.release(true);
+  }
+}
+
 beforeAll(async () => {
-  await pool.query(up);
-  await pool.query(analyticsUp);
-  await pool.query(verificationUp);
+  await pool.query(`DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'myphisys_test_migration_owner') THEN
+      CREATE ROLE myphisys_test_migration_owner NOLOGIN CREATEROLE NOSUPERUSER NOBYPASSRLS;
+    END IF;
+    EXECUTE format('GRANT CREATE ON DATABASE %I TO myphisys_test_migration_owner', current_database());
+  END $$`);
+  await migrateAsOwner(up, analyticsUp, verificationUp);
 });
 afterAll(async () => {
   await pool.end();
 });
+
+async function seedRaw(personId: string, connectorId: string) {
+  const sourceId = uuidv7();
+  const recordId = uuidv7();
+  const rawId = uuidv7();
+  await pool.query('INSERT INTO identity.person(id) VALUES ($1)', [personId]);
+  await pool.query(
+    'INSERT INTO source.source(id,person_id,connector_id) VALUES ($1,$2,$3)',
+    [sourceId, personId, connectorId],
+  );
+  await pool.query(
+    'INSERT INTO source.record(id,person_id,source_id,external_record_id) VALUES ($1,$2,$3,$4)',
+    [recordId, personId, sourceId, 'one'],
+  );
+  await pool.query(
+    'INSERT INTO source.raw_record(id,person_id,record_id,version,operation,payload,content_hash,recorded_at) VALUES ($1,$2,$3,1,$4,$5,$6,$7)',
+    [rawId, personId, recordId, 'upsert', '{}', 'hash', '2026-01-01T00:00:00Z'],
+  );
+  return rawId;
+}
 
 describe('M1 PostgreSQL foundation', () => {
   test('RLS isolates people and connector cannot write clinical tables', async () => {
@@ -85,30 +119,7 @@ describe('M1 PostgreSQL foundation', () => {
 
   test('Raw is immutable and fact provenance is required', async () => {
     const personId = uuidv7();
-    const sourceId = uuidv7();
-    const recordId = uuidv7();
-    const rawId = uuidv7();
-    await pool.query('INSERT INTO identity.person(id) VALUES ($1)', [personId]);
-    await pool.query(
-      'INSERT INTO source.source(id,person_id,connector_id) VALUES ($1,$2,$3)',
-      [sourceId, personId, 'raw-test'],
-    );
-    await pool.query(
-      'INSERT INTO source.record(id,person_id,source_id,external_record_id) VALUES ($1,$2,$3,$4)',
-      [recordId, personId, sourceId, 'one'],
-    );
-    await pool.query(
-      'INSERT INTO source.raw_record(id,person_id,record_id,version,operation,payload,content_hash,recorded_at) VALUES ($1,$2,$3,1,$4,$5,$6,$7)',
-      [
-        rawId,
-        personId,
-        recordId,
-        'upsert',
-        '{}',
-        'hash',
-        '2026-01-01T00:00:00Z',
-      ],
-    );
+    const rawId = await seedRaw(personId, 'raw-test');
     await expect(
       pool.query('UPDATE source.raw_record SET payload=$1 WHERE id=$2', [
         '{}',
@@ -135,6 +146,59 @@ describe('M1 PostgreSQL foundation', () => {
     ).rejects.toMatchObject({ code: '23502' });
   });
 
+  test('verification down resets audited facts under an owner without BYPASSRLS', async () => {
+    const personId = uuidv7();
+    const rawId = await seedRaw(personId, 'manual');
+    const confirmedId = uuidv7();
+    const priorId = uuidv7();
+    await pool.query(
+      `INSERT INTO health.fact (id, person_id, concept_id, kind, value, effective, recorded_at,
+          epistemic, verification, state, origin_raw_id)
+       SELECT id, $3, 'sleep_duration', 'observation', '{"kind":"quantity","originalValue":8,"originalUnit":"h"}'::jsonb,
+          jsonb_build_object('kind', 'local_date', 'value', day), '2026-01-02T12:00:00Z'::timestamptz,
+          'user_reported', 'user_verified', 'current', $4
+       FROM (VALUES ($1::uuid, '2026-01-01'), ($2::uuid, '2026-01-02')) AS fixture(id, day)`,
+      [confirmedId, priorId, personId, rawId],
+    );
+    await pool.query(
+      `INSERT INTO health.sleep_verification_event (person_id, fact_id, from_revision, issuer,
+          subject, action, policy_version, revision_fingerprint, supports)
+       VALUES ($1, $2, 0, 'https://fixture.example/auth/v1', $3, 'confirm', 'fixture', 'fixture', '[]')`,
+      [personId, confirmedId, uuidv7()],
+    );
+
+    await migrateAsOwner(verificationDown);
+    try {
+      const facts = await pool.query(
+        'SELECT id, verification, origin_raw_id FROM health.fact WHERE id = ANY($1::uuid[])',
+        [[confirmedId, priorId]],
+      );
+      expect(facts.rows).toEqual(
+        expect.arrayContaining([
+          { id: confirmedId, verification: 'unverified', origin_raw_id: rawId },
+          { id: priorId, verification: 'user_verified', origin_raw_id: rawId },
+        ]),
+      );
+      const schema =
+        await pool.query(`SELECT relrowsecurity, relforcerowsecurity,
+        to_regclass('health.sleep_verification_event') AS audit_table,
+        has_table_privilege('myphisys_domain', 'health.fact', 'UPDATE') AS domain_update,
+        has_column_privilege('myphisys_analytics', 'health.fact', 'verification', 'SELECT') AS analytics_read,
+        has_column_privilege('myphisys_sleep_verifier', 'health.fact', 'verification', 'UPDATE') AS verifier_update
+        FROM pg_class WHERE oid = 'health.fact'::regclass`);
+      expect(schema.rows[0]).toEqual({
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        audit_table: null,
+        domain_update: true,
+        analytics_read: true,
+        verifier_update: false,
+      });
+    } finally {
+      await migrateAsOwner(verificationUp);
+    }
+  });
+
   test('transaction rollback removes outbox writes; migration down and reapply works', async () => {
     const personId = uuidv7();
     await pool.query('INSERT INTO identity.person(id) VALUES ($1)', [personId]);
@@ -156,7 +220,7 @@ describe('M1 PostgreSQL foundation', () => {
         ])
       ).rowCount,
     ).toBe(0);
-    await pool.query(verificationDown);
+    await migrateAsOwner(verificationDown);
     expect(
       (
         await pool.query(
@@ -164,11 +228,7 @@ describe('M1 PostgreSQL foundation', () => {
         )
       ).rows[0]?.table_name,
     ).toBeNull();
-    await pool.query(analyticsDown);
-    await pool.query(down);
-    await pool.query(up);
-    await pool.query(analyticsUp);
-    await pool.query(verificationUp);
+    await migrateAsOwner(analyticsDown, down, up, analyticsUp, verificationUp);
     expect(
       (await pool.query("SELECT to_regclass('health.fact') AS table_name"))
         .rows[0]?.table_name,

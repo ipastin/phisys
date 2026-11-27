@@ -1,10 +1,16 @@
 BEGIN;
 
+-- Let the table owner reset statuses before their audit evidence is removed.
+ALTER TABLE health.fact NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE health.sleep_verification_event NO FORCE ROW LEVEL SECURITY;
+
 UPDATE health.fact f SET verification = 'unverified'
 WHERE f.verification = 'user_verified' AND EXISTS (
   SELECT 1 FROM health.sleep_verification_event e
   WHERE e.person_id = f.person_id AND e.fact_id = f.id
 );
+
+ALTER TABLE health.fact FORCE ROW LEVEL SECURITY;
 
 DO $$ DECLARE tab text; BEGIN
   FOREACH tab IN ARRAY ARRAY[
