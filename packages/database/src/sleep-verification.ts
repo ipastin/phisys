@@ -52,10 +52,11 @@ async function authenticateOwner(
   publishableKey: string,
   accessToken: string,
 ): Promise<string> {
-  if (
-    typeof accessToken !== 'string' ||
-    !/^[\w-]+\.[\w-]+\.[\w-]+$/.test(accessToken)
-  )
+  const encodedClaims =
+    typeof accessToken === 'string'
+      ? /^[\w-]+\.([\w-]+)\.[\w-]+$/.exec(accessToken)?.[1]
+      : undefined;
+  if (!encodedClaims)
     throw new SleepVerificationError('authentication_required');
 
   let user: { id?: unknown; role?: unknown; is_anonymous?: unknown } | null;
@@ -85,7 +86,27 @@ async function authenticateOwner(
     user.is_anonymous !== false
   )
     throw new SleepVerificationError('authentication_required');
-  return user.id.toLowerCase();
+
+  // Supabase authenticated this exact token. Its profile response omits client_id.
+  let claims: unknown;
+  try {
+    claims = JSON.parse(
+      Buffer.from(encodedClaims, 'base64url').toString('utf8'),
+    );
+  } catch {
+    throw new SleepVerificationError('authentication_required');
+  }
+  const subject = user.id.toLowerCase();
+  if (
+    !claims ||
+    typeof claims !== 'object' ||
+    !('sub' in claims) ||
+    typeof claims.sub !== 'string' ||
+    claims.sub.toLowerCase() !== subject ||
+    Object.hasOwn(claims, 'client_id')
+  )
+    throw new SleepVerificationError('authentication_required');
+  return subject;
 }
 
 type RevisionRow = {
@@ -228,8 +249,11 @@ export function createSleepVerificationService(
         );
         if (!replay.rowCount || preview.verification !== verification)
           throw new SleepVerificationError('stale_revision');
+        return { verification };
       }
-      if (preview.verification === verification) return { verification };
+      // A fresh revoke closes the revision even if a pending confirm has not reached SQL.
+      if (action === 'confirm' && preview.verification === verification)
+        return { verification };
 
       await db.query(
         `INSERT INTO health.sleep_verification_event

@@ -141,10 +141,13 @@ const verificationService = createSleepVerificationService(
   verifier,
   verificationConfig,
 );
-const sessionA = 'synthetic.fixture.ownerA';
-const sessionB = 'synthetic.fixture.ownerB';
-const sessionAnonymous = 'synthetic.fixture.anonymous';
-const sessionUnbound = 'synthetic.fixture.unbound';
+function syntheticToken(
+  claims: { sub: string; client_id?: string },
+  marker = 'fixture',
+) {
+  const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+  return `synthetic.${payload}.${marker}`;
+}
 
 async function verificationOwner() {
   const personId = uuidv7();
@@ -154,10 +157,13 @@ async function verificationOwner() {
     'INSERT INTO identity.person_owner(issuer,subject,person_id) VALUES ($1,$2,$3)',
     [verificationIssuer, subject, personId],
   );
-  return { personId, subject };
+  return { personId, subject, token: syntheticToken({ sub: subject }) };
 }
 
-function syntheticSupabase(subjects: ReadonlyMap<string, string>) {
+function syntheticSupabase(
+  subjects: ReadonlyMap<string, string>,
+  beforeProfile?: (token: string) => Promise<void>,
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn<typeof fetch>(async (url, options) => {
@@ -165,13 +171,14 @@ function syntheticSupabase(subjects: ReadonlyMap<string, string>) {
       expect(options?.redirect).toBe('error');
       const headers = new Headers(options?.headers);
       expect(headers.get('apikey')).toBe(verificationConfig.publishableKey);
-      const token = headers.get('authorization')?.slice('Bearer '.length);
-      const id = token ? subjects.get(token) : undefined;
+      const token = headers.get('authorization')?.slice('Bearer '.length) ?? '';
+      const id = subjects.get(token);
       if (!id) return new Response(null, { status: 401 });
+      await beforeProfile?.(token);
       return Response.json({
         id,
         role: 'authenticated',
-        is_anonymous: token === sessionAnonymous,
+        is_anonymous: token.endsWith('.anonymous'),
       });
     }),
   );
@@ -207,18 +214,21 @@ async function importManualNight(record: ReturnType<typeof manualNight>) {
 test('DB Manual verification resolves an active verified owner and serializes retries and revoke', async () => {
   const a = await verificationOwner();
   const b = await verificationOwner();
+  const anonymous = syntheticToken({ sub: a.subject }, 'anonymous');
+  const unboundSubject = randomUUID();
+  const unbound = syntheticToken({ sub: unboundSubject });
   syntheticSupabase(
     new Map([
-      [sessionA, a.subject],
-      [sessionB, b.subject],
-      [sessionAnonymous, a.subject],
-      [sessionUnbound, randomUUID()],
+      [a.token, a.subject],
+      [b.token, b.subject],
+      [anonymous, a.subject],
+      [unbound, unboundSubject],
     ]),
   );
   const factId = await importManualNight(
     manualNight(a.personId, '2026-01-01', 8),
   );
-  const preview = await verificationService.getRevision(sessionA, factId);
+  const preview = await verificationService.getRevision(a.token, factId);
   expect(preview).toMatchObject({
     value: { canonicalValue: 8, canonicalUnit: 'h' },
     effective: { kind: 'local_date', value: '2026-01-01' },
@@ -232,16 +242,16 @@ test('DB Manual verification resolves an active verified owner and serializes re
     actorId: a.subject,
   };
   await expect(
-    verificationService.confirm(sessionB, suppliedOwner),
+    verificationService.confirm(b.token, suppliedOwner),
   ).rejects.toMatchObject({ code: 'revision_unavailable' });
   await expect(
     verificationService.confirm('synthetic.fixture.rejected', preview),
   ).rejects.toMatchObject({ code: 'authentication_required' });
   await expect(
-    verificationService.confirm(sessionAnonymous, preview),
+    verificationService.confirm(anonymous, preview),
   ).rejects.toMatchObject({ code: 'authentication_required' });
   await expect(
-    verificationService.confirm(sessionUnbound, preview),
+    verificationService.confirm(unbound, preview),
   ).rejects.toMatchObject({ code: 'owner_binding_unavailable' });
 
   // The DB role cannot change even its own link or read payload.
@@ -273,27 +283,27 @@ test('DB Manual verification resolves an active verified owner and serializes re
     db.release();
   }
   const sameConfirmation = await Promise.all([
-    verificationService.confirm(sessionA, preview),
-    verificationService.confirm(sessionA, preview),
+    verificationService.confirm(a.token, preview),
+    verificationService.confirm(a.token, preview),
   ]);
   expect(sameConfirmation).toEqual([
     { verification: 'user_verified' },
     { verification: 'user_verified' },
   ]);
-  const confirmed = await verificationService.getRevision(sessionA, factId);
+  const confirmed = await verificationService.getRevision(a.token, factId);
   await expect(
-    verificationService.revoke(sessionB, confirmed),
+    verificationService.revoke(b.token, confirmed),
   ).rejects.toMatchObject({ code: 'revision_unavailable' });
+  await expect(verificationService.revoke(a.token, confirmed)).resolves.toEqual(
+    { verification: 'unverified' },
+  );
+  await expect(verificationService.revoke(a.token, confirmed)).resolves.toEqual(
+    { verification: 'unverified' },
+  );
   await expect(
-    verificationService.revoke(sessionA, confirmed),
-  ).resolves.toEqual({ verification: 'unverified' });
-  await expect(
-    verificationService.revoke(sessionA, confirmed),
-  ).resolves.toEqual({ verification: 'unverified' });
-  await expect(
-    verificationService.confirm(sessionA, preview),
+    verificationService.confirm(a.token, preview),
   ).rejects.toMatchObject({ code: 'stale_revision' });
-  const revoked = await verificationService.getRevision(sessionA, factId);
+  const revoked = await verificationService.getRevision(a.token, factId);
   await admin.query(
     'UPDATE identity.person_owner SET disabled_at=clock_timestamp() WHERE person_id=$1',
     [a.personId],
@@ -302,7 +312,7 @@ test('DB Manual verification resolves an active verified owner and serializes re
     verificationService.confirm,
     verificationService.revoke,
   ])
-    await expect(action(sessionA, revoked)).rejects.toMatchObject({
+    await expect(action(a.token, revoked)).rejects.toMatchObject({
       code: 'owner_binding_unavailable',
     });
   expect(
@@ -324,16 +334,143 @@ test('DB Manual verification resolves an active verified owner and serializes re
   );
 });
 
+test('DB Manual verification rejects a delegated token before opening a DB connection', async () => {
+  const owner = await verificationOwner();
+  const delegated = syntheticToken({
+    sub: owner.subject,
+    client_id: randomUUID(),
+  });
+  const mismatched = syntheticToken({ sub: randomUUID() });
+  syntheticSupabase(
+    new Map([
+      [owner.token, owner.subject],
+      [delegated, owner.subject],
+      [mismatched, owner.subject],
+    ]),
+  );
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  const connect = vi.spyOn(verifier, 'connect');
+
+  await expect(
+    verificationService.getRevision(delegated, factId),
+  ).rejects.toMatchObject({ code: 'authentication_required' });
+  for (const action of [
+    verificationService.confirm,
+    verificationService.revoke,
+  ]) {
+    for (const token of [delegated, mismatched])
+      await expect(action(token, preview)).rejects.toMatchObject({
+        code: 'authentication_required',
+      });
+  }
+  expect(connect).not.toHaveBeenCalled();
+});
+
+test('DB Manual revoke closes an unverified revision before a pending confirm arrives', async () => {
+  const owner = await verificationOwner();
+  const delayedToken = syntheticToken({ sub: owner.subject }, 'delayed');
+  const entered = Promise.withResolvers<void>();
+  const resume = Promise.withResolvers<void>();
+  syntheticSupabase(
+    new Map([
+      [owner.token, owner.subject],
+      [delayedToken, owner.subject],
+    ]),
+    async (token) => {
+      if (token === delayedToken) {
+        entered.resolve();
+        await resume.promise;
+      }
+    },
+  );
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  expect(preview.verification).toBe('unverified');
+  const pending = Promise.allSettled([
+    verificationService.confirm(delayedToken, preview),
+  ]);
+  await entered.promise;
+  try {
+    await expect(
+      verificationService.revoke(owner.token, preview),
+    ).resolves.toEqual({ verification: 'unverified' });
+  } finally {
+    resume.resolve();
+  }
+  expect(await pending).toMatchObject([
+    { status: 'rejected', reason: { code: 'stale_revision' } },
+  ]);
+  await expect(
+    verificationService.revoke(owner.token, preview),
+  ).resolves.toEqual({ verification: 'unverified' });
+  const current = await verificationService.getRevision(owner.token, factId);
+  expect(current.verification).toBe('unverified');
+  expect(current.revision).not.toBe(preview.revision);
+  expect(
+    (
+      await admin.query(
+        `SELECT action, revision_fingerprint FROM health.sleep_verification_event
+     WHERE person_id=$1 AND fact_id=$2`,
+        [owner.personId, factId],
+      )
+    ).rows,
+  ).toEqual([{ action: 'revoke', revision_fingerprint: preview.revision }]);
+});
+
+test('DB Manual verification rolls back audit and status when the status update fails', async () => {
+  const owner = await verificationOwner();
+  syntheticSupabase(new Map([[owner.token, owner.subject]]));
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  await admin.query(
+    `ALTER TABLE health.fact ADD CONSTRAINT test_verification_update_failure
+     CHECK (id <> '${factId}'::uuid OR verification_revision = 0) NOT VALID`,
+  );
+  try {
+    await expect(
+      verificationService.confirm(owner.token, preview),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'test_verification_update_failure',
+    });
+    expect(
+      (
+        await admin.query(
+          'SELECT 1 FROM health.sleep_verification_event WHERE person_id=$1 AND fact_id=$2',
+          [owner.personId, factId],
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(await verificationService.getRevision(owner.token, factId)).toEqual(
+      preview,
+    );
+  } finally {
+    await admin.query(
+      'ALTER TABLE health.fact DROP CONSTRAINT test_verification_update_failure',
+    );
+  }
+  await expect(
+    verificationService.confirm(owner.token, preview),
+  ).resolves.toEqual({ verification: 'user_verified' });
+});
+
 test('DB Manual verification invalidates a stale preview when Raw support changes or returns', async () => {
   const owner = await verificationOwner();
-  syntheticSupabase(new Map([[sessionA, owner.subject]]));
+  syntheticSupabase(new Map([[owner.token, owner.subject]]));
   const record = manualNight(owner.personId, '2026-01-01', 8);
   const factId = await importManualNight(record);
-  const preview = await verificationService.getRevision(sessionA, factId);
+  const preview = await verificationService.getRevision(owner.token, factId);
   const extra = { ...record, externalRecordId: 'other-manual-record' };
   const [added, confirmation] = await Promise.allSettled([
     ingest(writer, extra),
-    verificationService.confirm(sessionA, preview),
+    verificationService.confirm(owner.token, preview),
   ]);
   expect(added).toMatchObject({
     status: 'fulfilled',
@@ -341,29 +478,29 @@ test('DB Manual verification invalidates a stale preview when Raw support change
   });
   if (confirmation.status === 'rejected')
     expect(confirmation.reason).toMatchObject({ code: 'stale_revision' });
-  const withExtra = await verificationService.getRevision(sessionA, factId);
+  const withExtra = await verificationService.getRevision(owner.token, factId);
   expect(withExtra.verification).toBe('unverified');
   expect(withExtra.supports).toHaveLength(2);
-  await verificationService.confirm(sessionA, withExtra);
+  await verificationService.confirm(owner.token, withExtra);
   await ingest(writer, {
     ...extra,
     version: 2,
     operation: 'delete',
     payload: {},
   });
-  const remaining = await verificationService.getRevision(sessionA, factId);
+  const remaining = await verificationService.getRevision(owner.token, factId);
   expect(remaining).toMatchObject({
     supports: preview.supports,
     verification: 'unverified',
   });
   await expect(
-    verificationService.confirm(sessionA, preview),
+    verificationService.confirm(owner.token, preview),
   ).rejects.toMatchObject({ code: 'stale_revision' });
   await expect(
-    verificationService.confirm(sessionA, withExtra),
+    verificationService.confirm(owner.token, withExtra),
   ).rejects.toMatchObject({ code: 'stale_revision' });
   await expect(
-    verificationService.confirm(sessionA, remaining),
+    verificationService.confirm(owner.token, remaining),
   ).resolves.toEqual({ verification: 'user_verified' });
 
   const external = await importManualNight({
@@ -371,13 +508,13 @@ test('DB Manual verification invalidates a stale preview when Raw support change
     connectorId: 'synthetic-external',
   });
   await expect(
-    verificationService.getRevision(sessionA, external),
+    verificationService.getRevision(owner.token, external),
   ).rejects.toMatchObject({ code: 'revision_unavailable' });
 });
 
 test('DB Manual verification moves a complete sleep series to sufficient and corrections preserve held', async () => {
   const owner = await verificationOwner();
-  syntheticSupabase(new Map([[sessionA, owner.subject]]));
+  syntheticSupabase(new Map([[owner.token, owner.subject]]));
   const request = {
     startDate: '2026-01-29',
     endDateExclusive: '2026-02-05',
@@ -407,8 +544,8 @@ test('DB Manual verification moves a complete sleep series to sufficient and cor
     },
   });
   for (const factId of factIds) {
-    const revision = await verificationService.getRevision(sessionA, factId);
-    await verificationService.confirm(sessionA, revision);
+    const revision = await verificationService.getRevision(owner.token, factId);
+    await verificationService.confirm(owner.token, revision);
   }
   const connect = vi.spyOn(reader, 'connect');
   const verified = await sleepMeaningfulness(reader, owner.personId, request);
@@ -442,25 +579,25 @@ test('DB Manual verification moves a complete sleep series to sufficient and cor
     ),
   ).toBe(true);
 
-  const old = await verificationService.getRevision(sessionA, factIds[29]!);
+  const old = await verificationService.getRevision(owner.token, factIds[29]!);
   const corrected = await importManualNight(
     manualNight(owner.personId, '2026-01-30', 8, 2),
   );
   await expect(
-    verificationService.confirm(sessionA, old),
+    verificationService.confirm(owner.token, old),
   ).rejects.toMatchObject({ code: 'revision_unavailable' });
   const newRevision = await verificationService.getRevision(
-    sessionA,
+    owner.token,
     corrected,
   );
   expect(newRevision.verification).toBe('unverified');
   await expect(
-    verificationService.confirm(sessionA, {
+    verificationService.confirm(owner.token, {
       factId: corrected,
       revision: old.revision,
     }),
   ).rejects.toMatchObject({ code: 'stale_revision' });
-  await verificationService.confirm(sessionA, newRevision);
+  await verificationService.confirm(owner.token, newRevision);
   expect(
     await sleepMeaningfulness(reader, owner.personId, request),
   ).toMatchObject({
@@ -468,8 +605,8 @@ test('DB Manual verification moves a complete sleep series to sufficient and cor
     diff: { status: 'unchanged', deltaHours: 0, qualityStatus: 'sufficient' },
     persistence: { status: 'pattern_not_observed' },
   });
-  const current = await verificationService.getRevision(sessionA, corrected);
-  await verificationService.revoke(sessionA, current);
+  const current = await verificationService.getRevision(owner.token, corrected);
+  await verificationService.revoke(owner.token, current);
   expect(
     await sleepMeaningfulness(reader, owner.personId, request),
   ).toMatchObject({
