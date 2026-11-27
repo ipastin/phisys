@@ -34,7 +34,7 @@ This is an illustrative product scenario. The current repository implements part
 
 ### Planned apps and access
 
-The first beta is planned for **Android**, as the main place to connect health data, check changes, and record observations. A **web companion** is planned for exploring history and organizing records on a larger screen. iOS is a later platform expansion. Widgets, notifications, and watch companions have narrower planned roles, such as noticing a change or capturing an observation. See the [surface strategy](docs/project-spec/v0.4.1/17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-27-11-26_14-38-31__v0.4.1__docs-brand.md) for the delivery roadmap.
+The first beta targets **native Android (Kotlin + Jetpack Compose)**, with Health Connect for device data. After beta, the **Web Companion (React + TypeScript + Next.js)** will support exploring history and organizing records on a larger screen. A later **native iOS app (Swift)** will use HealthKit. All three clients will use the same Fastify API and server-side analytics. Widgets, notifications, and watch companions have narrower planned roles, such as noticing a change or capturing an observation. See the [surface strategy](docs/project-spec/v0.5.0/17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md) for the delivery roadmap.
 
 ## What exists today
 
@@ -72,7 +72,7 @@ A successful `pnpm test` run completes the unit suite and then runs `pnpm test:a
 
 Phisys is designed to preserve the difference between a confirmed fact, a calculated result, and an AI inference. Missing data stays unknown; a meaningful result should be traceable to its source. Calculations come before AI explanations, and the system should be able to report that no meaningful change was found. Its purpose is to support health understanding and informed conversations with a clinician. Diagnosing conditions, prescribing treatment, and autonomously changing medication are outside the product's role.
 
-For the full product and engineering context, start with the [source-of-truth index](docs/SOURCE_OF_TRUTH.md). The [Project Specification](docs/project-spec/v0.4.1/00_README__created-06-10-26_06-56-08__updated-27-11-26_14-38-31__v0.4.1__docs-brand.md) and [Product Design Specification](docs/product-design/v0.2.1/00_README__created-07-10-26_10-48-10__updated-27-11-26_14-38-31__v0.2.1__docs-brand.md) describe the planned experience. Their roadmap is not a list of shipped features.
+For the full product and engineering context, start with the [source-of-truth index](docs/SOURCE_OF_TRUTH.md). The [Project Specification](docs/project-spec/v0.5.0/00_README__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md) and [Product Design Specification](docs/product-design/v0.3.0/00_README__created-07-10-26_10-48-10__updated-27-11-26_17-10-14__v0.3.0__docs-stack.md) describe the planned experience. Their roadmap is not a list of shipped features.
 
 ## License
 
@@ -80,8 +80,8 @@ No license file is currently included in this repository.
 
 <!--
 created: "15-10-26 10-56-12"
-updated: "27-11-26 15-21-36"
+updated: "27-11-26 17-10-14"
 timezone: Europe/Moscow
-version: "0.2.3"
-commit: "docs(roadmap): add HTML overview"
+version: "0.2.4"
+commit: "docs(stack): record native and web client decisions"
 -->

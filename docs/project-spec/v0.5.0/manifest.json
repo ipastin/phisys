@@ -1,0 +1,29 @@
+{
+  "name": "Phisys Project Specification Pack",
+  "version": "0.5.0",
+  "updated": "27-11-26 17-10-14",
+  "commit": "docs(stack): record native and web client decisions",
+  "documents": [
+    "00_README__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "01_PRODUCT__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "02_ARCHITECTURE__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "03_DATA_MODEL__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "04_ANALYTICS__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "05_AGENT_RUNTIME__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "06_SKILLS__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "07_CONTEXT_MEMORY__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "08_SAFETY__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "09_CONNECTORS__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "10_UX__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "11_IMPLEMENTATION__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "12_EVALS__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "13_ADR__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "14_AGENTS__created-06-10-26_06-56-08__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "15_BRAND__created-06-10-26_17-26-44__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "16_MODEL_STRATEGY__created-10-10-26_11-38-32__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md",
+    "17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-27-11-26_17-10-14__v0.5.0__docs-stack.md"
+  ],
+  "accepted_adr_count": 171,
+  "invariant_count": 31,
+  "timezone": "Europe/Moscow"
+}

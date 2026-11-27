@@ -1,10 +1,10 @@
 ---
 title: Phisys — Codex instructions
 created: "15-10-26 09-37-26"
-updated: "27-11-26 14-41-45"
+updated: "27-11-26 17-10-14"
 timezone: Europe/Moscow
-version: "0.2.10"
-commit: "docs(brand): adopt Phisys project naming"
+version: "0.2.11"
+commit: "docs(stack): record native and web client decisions"
 ---
 
 # Phisys
@@ -23,9 +23,8 @@ Product domain: https://phisys.cloud. Используй написание **Ph
 ## Ограничения архитектуры
 
 Ниже — компактная выборка из Project Spec `14 AGENTS`, `02 ARCHITECTURE` и accepted ADR.
-Полный registry — 31 invariant и 170 ADR в импортированном Project Spec. В заголовке
-`13 ADR` статус привязан к v0.3.0, хотя manifest v0.4.0 и записи ADR указывают `Accepted`;
-перед опорой на новые ADR учти [неоднозначность статуса](docs/SOURCE_OF_TRUTH.md#открытые-вопросы-исходных-спецификаций). При конфликте:
+Текущий registry содержит 31 invariant и 171 запись ADR. Владелец утвердил ADR-171 для клиентского стека 27 ноября 2026 года.
+Для ADR-151–170 сохраняется [неоднозначность статуса в исходном импорте](docs/SOURCE_OF_TRUTH.md#открытые-вопросы-исходных-спецификаций). При конфликте:
 explicit invariant → accepted ADR → domain specification → implementation convenience.
 Конфликт фиксируй; source documents не переписывай молча.
 
@@ -46,13 +45,20 @@ explicit invariant → accepted ADR → domain specification → implementation 
 - Surface Strategy распределяет capabilities по задачам surfaces; feature parity не является целью.
   Detailed health disclosure не включается по умолчанию на lock screen, widget или watch.
 
+### Клиенты и общий API
+
+- Android Personal Beta — нативное приложение на Kotlin и Jetpack Compose. Тонкий адаптер Android Health Connect SDK передаёт исходные записи в ingestion через Fastify.
+- Web Companion после Android Beta — React, TypeScript strict и Next.js. Web обращается к Fastify по HTTP/OpenAPI. PostgreSQL и детерминированная аналитика остаются в backend.
+- iOS — отдельное нативное приложение на Swift с HealthKit, позже по Surface Strategy. Выбор UI toolkit для iOS относится к этапу S3.
+- Общий контракт задаёт типы данных на границе API, семантику состояния, provenance и роли design tokens. Реализация интерфейсов и сборка зависят от платформы. См. [решение ADR-171](docs/SOURCE_OF_TRUTH.md#стек-клиентов).
+
 Текущий build order по Project Spec `11 IMPLEMENTATION`: M0 Foundation → M1 Health Data Pipeline
 → M2 Health Intelligence (`What Changed`) → M3 Product Experience → M4 Clinical Data + AI → M5 Hardening.
 
 ## Scope и разрешения
 
-- Состояние реализации и ссылки на проверки приведены в [карте проекта](docs/SOURCE_OF_TRUTH.md#состояние-разработки-и-дизайна). [Onboarding audit](docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-27-11-26_14-41-45__v0.3.3__docs-audit.md)
-  и [утверждённый M0 scope](.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-27-11-26_14-41-45__v0.3.3__docs-plan.md) фиксируют исходные решения M0. Для новой реализации сверяй затронутый milestone и актуальный scope.
+- Состояние реализации и ссылки на проверки приведены в [карте проекта](docs/SOURCE_OF_TRUTH.md#состояние-разработки-и-дизайна). [Onboarding audit](docs/M0_ONBOARDING_AUDIT__created-15-10-26_12-28-44__updated-27-11-26_17-10-14__v0.3.4__docs-stack.md)
+  и [утверждённый M0 scope](.agent/plans/M0-foundation-review__created-15-10-26_12-28-44__updated-27-11-26_17-10-14__v0.3.4__docs-stack.md) фиксируют исходные решения M0. Для новой реализации сверяй затронутый milestone и актуальный scope.
 - Работай в отдельной `codex/*` ветке и через PR. Не создавай и не меняй `main` напрямую.
 - Merge, deploy, DNS/domain changes, secrets, Figma/shared-system writes требуют отдельного разрешения.
 - Для изменения canonical model, safety/privacy, accepted ADR, IA или утверждённого UX сначала покажи decision и trade-offs.
