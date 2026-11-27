@@ -1,10 +1,10 @@
 ---
 title: "M2 — Manual sleep verification and revoke"
 created: "27-11-26 12-15-26"
-updated: "27-11-26 13-10-37"
+updated: "27-11-26 15-56-30"
 timezone: Europe/Moscow
-version: 0.1.2
-commit: "docs(plan): record verification review corrections"
+version: 0.1.3
+commit: "docs(plan): record stored-session verification evidence"
 status: in_progress
 ---
 
@@ -47,6 +47,8 @@ separate authorization. 0.5 h remains a hypothesis for separate calibration.
   The server checks the subject and delegation claim on the same token that
   Supabase accepted, before opening a database connection. A token containing
   `client_id` cannot perform any self-only operation.
+  A valid `session_id` and a positive personal-session result from the Auth
+  server are required even when `client_id` is absent.
 - A preview identifies the current Canonical revision, displayed value and
   local date, and ordered active Raw supports. Confirm/revoke is a separate
   explicit operation scoped to that revision. Owner link, current fact and
@@ -95,6 +97,10 @@ Also check `git diff --check` and the PR Actions workflow.
   an old confirmation. An old command cannot restore a revoked fact.
 - A mock Supabase response returns the same owner profile for a direct token
   and a delegated token. Only the direct token can enter the DB path.
+- A stored OAuth session is denied before a DB connection even when its token
+  omits `client_id`. A personal session works with the OAuth server disabled.
+  Missing session identity, older Auth versions and unknown probe results fail
+  closed.
 - A pending confirm reaches the DB after revoke has consumed its preview.
   The fact remains unverified and an exact revoke retry adds no second event.
 - A PostgreSQL constraint forces the status write to fail after the audit
@@ -121,17 +127,31 @@ Also check `git diff --check` and the PR Actions workflow.
   coverage. Implementation `98deae8e373994e5a44b5192c4f25914a2f902d5` passed
   lint, formatting, typecheck, unit and architecture tests, build, diff check
   and 34 DB tests on disposable PostgreSQL 16 from the repository root.
-- [ ] Record the corrected draft head and exact-head CI in the PR description.
+- [x] [CI #87](https://github.com/ipastin/phisys/actions/runs/45980167780) passed
+  on `fa40d45d6679eeef8cc292a9d599366b501989ae`. Owner review found that a
+  Supabase Custom Access Token Hook can omit `client_id`.
+- [x] 27-11-26 15-56-30 — owner authorized the stored-session fix.
+  Implementation `88e2d392974174e71e749057dc08b9fbf1a1aa87` passed lint, formatting,
+  typecheck, unit and architecture tests, build, diff check and 36 DB tests
+  on disposable PostgreSQL 16 from the repository root.
+- [ ] Record the latest draft head and exact-head CI in the PR description.
 
 Use a narrow server role and the configured Auth project over a request-supplied
 identity or a test-only authority. The role shares the fact row lock with
 ingestion. An incrementing revision prevents a preview from becoming valid
 again when support changes and later returns to the same set.
-The review correction uses the existing Auth request to verify the submitted
-token, then reads its claims for the self-only check.
-[Supabase OAuth token documentation](https://supabase.com/docs/guides/auth/oauth-server/token-security)
-defines `client_id` as the OAuth client marker. A successful revoke consumes the
-revision instead of reporting success with an outstanding confirm still valid.
+A successful revoke consumes the revision so a pending confirm cannot apply.
+The Auth server verifies the token and profile. The adapter checks its stable
+version through Auth `/health` and uses the same token on the read-only
+`/user/oauth/grants` route. From
+[Auth v2.198.0](https://github.com/supabase/auth/releases/tag/v2.198.0),
+[the route's middleware](https://github.com/supabase/auth/blob/v2.198.0/internal/api/api.go#L277-L281)
+[checks the stored session](https://github.com/supabase/auth/blob/v2.198.0/internal/api/auth.go#L17-L28)
+before evaluating the OAuth feature flag. The exact versioned
+`feature_disabled` result on this route is sufficient for a personal session
+when the OAuth server is disabled. An ordinary 404 is unavailable.
+This uses project publishable-key access and avoids privileged session-table
+access or a custom token hook.
 
 The backend creates `createSleepVerificationService(pool, { projectUrl, publishableKey })`
 with a pool authorized to assume `myphisys_sleep_verifier`. It calls
@@ -148,7 +168,11 @@ An interrupted or failed decision transaction rolls back evidence and effective
 verification together. Request retries can return the already-committed state for
 the same command. A stale revision requires a new preview. Migration rollback
 is for disposable DB verification and removes its own verification projections.
-Live Supabase provisioning and live-account validation are `not_run`.
+Live Supabase provisioning, version verification and account validation are
+`not_run`. The configured project must consistently serve a supported stable
+Supabase Auth v2 release at or above v2.198.0. If the live project is older,
+upgrading or replacing its Auth configuration requires an owner decision before
+activation.
 The Auth HTTP boundary was exercised with synthetic user responses, including
 anonymous, delegated and rejected tokens. The role tests used PostgreSQL, with
 no SQL fixture assigning `user_verified`. Acceptance review of the corrected
