@@ -6,7 +6,7 @@
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@myphisys/*": ["packages/*/src/index.ts"],
+      "@phisys/*": ["packages/*/src/index.ts"],
       "@alias/*": ["packages/*/src/index.ts"]
     }
   }

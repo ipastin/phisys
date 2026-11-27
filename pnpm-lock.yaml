@@ -196,11 +196,11 @@ importers:
 
   packages/analytics:
     dependencies:
-      '@myphisys/database':
+      '@phisys/database':
         specifier: workspace:*
         version: link:../database
     devDependencies:
-      '@myphisys/ingestion':
+      '@phisys/ingestion':
         specifier: workspace:*
         version: link:../ingestion
 
@@ -212,11 +212,11 @@ importers:
 
   packages/connectors:
     dependencies:
-      '@myphisys/ingestion':
+      '@phisys/ingestion':
         specifier: workspace:*
         version: link:../ingestion
     devDependencies:
-      '@myphisys/database':
+      '@phisys/database':
         specifier: workspace:*
         version: link:../database
 
@@ -234,10 +234,10 @@ importers:
 
   packages/ingestion:
     dependencies:
-      '@myphisys/database':
+      '@phisys/database':
         specifier: workspace:*
         version: link:../database
-      '@myphisys/health-core':
+      '@phisys/health-core':
         specifier: workspace:*
         version: link:../health-core
 

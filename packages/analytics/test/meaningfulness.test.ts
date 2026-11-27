@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import type { Pool, SleepFactRow } from '@myphisys/database';
+import type { Pool, SleepFactRow } from '@phisys/database';
 import {
   evaluateSleepMeaningfulness,
   evaluateSleepMetricStatePair,
@@ -630,6 +630,8 @@ test('runtime derives both analyses after one scoped read and rejects substitute
     const originalRequest = { ...request };
     const facts = series();
     const query = vi.fn(async (...[sql]: [string, unknown[]?]) => {
+      if (sql.includes('FROM pg_catalog.pg_policies'))
+        return { rows: [{ role_name: 'phisys_analytics' }] };
       if (sql.includes('FROM health.fact f')) {
         request.startDate = '2026-01-30';
         return { rows: facts };

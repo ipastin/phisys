@@ -4,7 +4,7 @@ import {
   readCurrentSleepFacts,
   type Pool,
   type SleepFactRow,
-} from '@myphisys/database';
+} from '@phisys/database';
 
 export type MetricDefinition = {
   readonly id: 'sleep_duration';

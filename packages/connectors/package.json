@@ -1,5 +1,5 @@
 {
-  "name": "@myphisys/connectors",
+  "name": "@phisys/connectors",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,9 +12,9 @@
     "test:unit": "vitest run test --exclude test/integration.test.ts"
   },
   "dependencies": {
-    "@myphisys/ingestion": "workspace:*"
+    "@phisys/ingestion": "workspace:*"
   },
   "devDependencies": {
-    "@myphisys/database": "workspace:*"
+    "@phisys/database": "workspace:*"
   }
 }

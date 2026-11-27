@@ -1,2 +1,2 @@
-import { fixture } from '@myphisys/tool-gateway';
+import { fixture } from '@phisys/tool-gateway';
 export const allowed = fixture;

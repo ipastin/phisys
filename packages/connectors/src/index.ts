@@ -1,4 +1,4 @@
-import type { SourceRecord } from '@myphisys/ingestion';
+import type { SourceRecord } from '@phisys/ingestion';
 
 type ManualBase = {
   personId: string;

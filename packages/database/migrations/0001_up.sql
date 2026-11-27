@@ -142,23 +142,32 @@ INSERT INTO health.concept (id, kind) VALUES
   ('glucose', 'observation'), ('body_temperature', 'observation'),
   ('symptom', 'symptom');
 
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'myphisys_connector') THEN CREATE ROLE myphisys_connector NOLOGIN; END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'myphisys_domain') THEN CREATE ROLE myphisys_domain NOLOGIN; END IF;
+DO $$ DECLARE role_name name; BEGIN
+  FOREACH role_name IN ARRAY ARRAY['phisys_connector', 'phisys_domain'] LOOP
+    IF EXISTS (
+      SELECT 1 FROM pg_roles WHERE rolname = role_name
+        AND (rolcanlogin OR rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls)
+    ) THEN
+      RAISE EXCEPTION 'Role % must be a non-login capability role', role_name;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+      EXECUTE format('CREATE ROLE %I NOLOGIN', role_name);
+    END IF;
+  END LOOP;
 END $$;
-GRANT USAGE ON SCHEMA identity, source, health, jobs TO myphisys_domain;
-GRANT USAGE ON SCHEMA identity, source TO myphisys_connector;
-GRANT SELECT ON identity.person TO myphisys_connector, myphisys_domain;
-GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA source TO myphisys_connector;
-GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA source TO myphisys_domain;
-GRANT SELECT ON health.concept TO myphisys_domain;
-GRANT SELECT, INSERT, UPDATE ON health.fact TO myphisys_domain;
-GRANT SELECT, INSERT ON health.provenance, health.conflict, health.event TO myphisys_domain;
-GRANT SELECT, INSERT ON jobs.outbox TO myphisys_domain;
+GRANT USAGE ON SCHEMA identity, source, health, jobs TO phisys_domain;
+GRANT USAGE ON SCHEMA identity, source TO phisys_connector;
+GRANT SELECT ON identity.person TO phisys_connector, phisys_domain;
+GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA source TO phisys_connector;
+GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA source TO phisys_domain;
+GRANT SELECT ON health.concept TO phisys_domain;
+GRANT SELECT, INSERT, UPDATE ON health.fact TO phisys_domain;
+GRANT SELECT, INSERT ON health.provenance, health.conflict, health.event TO phisys_domain;
+GRANT SELECT, INSERT ON jobs.outbox TO phisys_domain;
 
 ALTER TABLE identity.person ENABLE ROW LEVEL SECURITY;
 ALTER TABLE identity.person FORCE ROW LEVEL SECURITY;
-CREATE POLICY person_scope ON identity.person FOR ALL TO myphisys_connector, myphisys_domain
+CREATE POLICY person_scope ON identity.person FOR ALL TO phisys_connector, phisys_domain
   USING (id = nullif(current_setting('app.person_id', true), '')::uuid)
   WITH CHECK (id = nullif(current_setting('app.person_id', true), '')::uuid);
 
@@ -166,7 +175,7 @@ DO $$ DECLARE tab text; BEGIN
   FOREACH tab IN ARRAY ARRAY['source.source', 'source.record', 'source.raw_record', 'source.quarantine', 'health.fact', 'health.provenance', 'health.conflict', 'health.event', 'jobs.outbox'] LOOP
     EXECUTE format('ALTER TABLE %s ENABLE ROW LEVEL SECURITY', tab);
     EXECUTE format('ALTER TABLE %s FORCE ROW LEVEL SECURITY', tab);
-    EXECUTE format('CREATE POLICY person_scope ON %s FOR ALL TO myphisys_connector, myphisys_domain USING (person_id = nullif(current_setting(''app.person_id'', true), '''')::uuid) WITH CHECK (person_id = nullif(current_setting(''app.person_id'', true), '''')::uuid)', tab);
+    EXECUTE format('CREATE POLICY person_scope ON %s FOR ALL TO phisys_connector, phisys_domain USING (person_id = nullif(current_setting(''app.person_id'', true), '''')::uuid) WITH CHECK (person_id = nullif(current_setting(''app.person_id'', true), '''')::uuid)', tab);
   END LOOP;
 END $$;
 

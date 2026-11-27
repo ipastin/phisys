@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import type { Pool, SleepFactRow } from '@myphisys/database';
+import type { Pool, SleepFactRow } from '@phisys/database';
 import {
   diffSleepMetricStateSnapshots,
   evaluateSleepMetricStatePair,
@@ -669,6 +669,8 @@ test('T1 runtime captures once after read and refuses external time override', a
       connect: async () => ({
         query: async (sql: string) => {
           calls.push(sql);
+          if (sql.includes('FROM pg_catalog.pg_policies'))
+            return { rows: [{ role_name: 'phisys_analytics' }] };
           if (sql.includes('FROM health.fact f')) {
             vi.setSystemTime(new Date('2026-01-15T10:11:12Z'));
             return { rows: weeks() };
@@ -688,7 +690,7 @@ test('T1 runtime captures once after read and refuses external time override', a
       calls.filter((sql) => sql.includes('FROM health.fact f')),
     ).toHaveLength(1);
     expect(calls[0]).toBe('BEGIN READ ONLY');
-    expect(calls).toContain('SET LOCAL ROLE myphisys_analytics');
+    expect(calls).toContain('SET LOCAL ROLE phisys_analytics');
     expect(pair.calculatedAt).toBe('2026-01-15T10:11:12.000Z');
     for (const timestamp of [
       pair.previous.calculatedAt,
@@ -724,6 +726,8 @@ test('T1 runtime ignores caller mutations made during the person-scoped read', a
   const pool = {
     connect: async () => ({
       query: async (sql: string, params?: unknown[]) => {
+        if (sql.includes('FROM pg_catalog.pg_policies'))
+          return { rows: [{ role_name: 'phisys_analytics' }] };
         if (sql.includes('FROM health.fact f')) {
           expect(params).toEqual([personId, '2026-01-01', '2026-01-15']);
           request.asOfDate = '2026-01-20';

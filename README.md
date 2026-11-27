@@ -4,7 +4,9 @@
 
 Phisys is a personal health intelligence system in development, with a planned mobile app and web companion. It is for people whose health information is spread across tracking apps, lab reports, and personal notes. The goal is to bring that information into a connected history, helping you understand what is known about your health, what has changed, and what deserves a closer look.
 
-> **Project status:** This repository contains source specifications and early backend packages. It does not yet provide an end-user app.
+> **Project status:** This repository contains source specifications and backend packages for data intake and sleep analysis. It does not yet provide an end-user app.
+
+[Roadmap overview (SVG)](docs/roadmap/phisys-roadmap.svg) · [Editable Excalidraw roadmap](docs/roadmap/phisys-roadmap.excalidraw) · [Implementation and UX/UI status](docs/SOURCE_OF_TRUTH.md#состояние-разработки-и-дизайна)
 
 ## The product we are building
 
@@ -32,13 +34,13 @@ This is an illustrative product scenario. The current repository implements part
 
 ### Planned apps and access
 
-The first beta is planned for **Android**, as the main place to connect health data, check changes, and record observations. A **web companion** is planned for exploring history and organizing records on a larger screen. iOS is a later platform expansion. Widgets, notifications, and watch companions have narrower planned roles, such as noticing a change or capturing an observation. See the [surface strategy](docs/project-spec/v0.4.0/17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-10-10-26_04-03-47__v0.4.0.md) for the delivery roadmap.
+The first beta is planned for **Android**, as the main place to connect health data, check changes, and record observations. A **web companion** is planned for exploring history and organizing records on a larger screen. iOS is a later platform expansion. Widgets, notifications, and watch companions have narrower planned roles, such as noticing a change or capturing an observation. See the [surface strategy](docs/project-spec/v0.4.1/17_SURFACE_STRATEGY__created-10-10-26_04-03-47__updated-27-11-26_14-38-31__v0.4.1__docs-brand.md) for the delivery roadmap.
 
 ## What exists today
 
 - A TypeScript monorepo with architecture checks and CI.
 - A PostgreSQL-backed health data foundation, canonical validation, provenance-aware ingestion, and a manual input connector.
-- Deterministic `sleep_duration` quality, baseline/trend, and adjacent-period comparison. Insufficient data is represented explicitly instead of being treated as a normal result.
+- Deterministic `sleep_duration` quality, baseline/trend, and adjacent-period comparison. The sleep analysis also records evidence of persistent change. All candidates are currently held internally. Insufficient data has its own status.
 
 The user interface, Health Connect integration, lab PDF import, complete `What Changed` experience, and AI-assisted exploration are **planned**, not available from this repository's `main` branch. The committed test fixtures use synthetic health data.
 
@@ -70,7 +72,7 @@ A successful `pnpm test` run completes the unit suite and then runs `pnpm test:a
 
 Phisys is designed to preserve the difference between a confirmed fact, a calculated result, and an AI inference. Missing data stays unknown; a meaningful result should be traceable to its source. Calculations come before AI explanations, and the system should be able to report that no meaningful change was found. Its purpose is to support health understanding and informed conversations with a clinician. Diagnosing conditions, prescribing treatment, and autonomously changing medication are outside the product's role.
 
-For the full product and engineering context, start with the [source-of-truth index](docs/SOURCE_OF_TRUTH.md). The [Project Specification](docs/project-spec/v0.4.0/00_README__created-06-10-26_06-56-08__updated-10-10-26_04-03-47__v0.4.0.md) and [Product Design Specification](docs/product-design/v0.2.0/00_README__created-07-10-26_10-48-10__updated-10-10-26_04-03-47__v0.2.0.md) describe the planned experience. Their roadmap is not a list of shipped features.
+For the full product and engineering context, start with the [source-of-truth index](docs/SOURCE_OF_TRUTH.md). The [Project Specification](docs/project-spec/v0.4.1/00_README__created-06-10-26_06-56-08__updated-27-11-26_14-38-31__v0.4.1__docs-brand.md) and [Product Design Specification](docs/product-design/v0.2.1/00_README__created-07-10-26_10-48-10__updated-27-11-26_14-38-31__v0.2.1__docs-brand.md) describe the planned experience. Their roadmap is not a list of shipped features.
 
 ## License
 
@@ -78,8 +80,8 @@ No license file is currently included in this repository.
 
 <!--
 created: "15-10-26 10-56-12"
-updated: "22-10-26 09-02-19"
+updated: "27-11-26 14-41-45"
 timezone: Europe/Moscow
-version: 0.2.1
-commit: "docs(readme): clarify planned outcomes and user wording"
+version: "0.2.2"
+commit: "docs(brand): adopt Phisys project naming"
 -->

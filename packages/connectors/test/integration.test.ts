@@ -1,5 +1,5 @@
-import { Pool, uuidv7, withPerson } from '@myphisys/database';
-import { ingest } from '@myphisys/ingestion';
+import { Pool, uuidv7, withPerson } from '@phisys/database';
+import { ingest } from '@phisys/ingestion';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { manualRecords } from '../src/index.js';
 
@@ -10,7 +10,7 @@ if (!process.env.DATABASE_URL || process.env.M1_DISPOSABLE_DB !== '1')
 
 const admin = new Pool({ connectionString: process.env.DATABASE_URL });
 const appUrl = new URL(process.env.DATABASE_URL);
-appUrl.username = 'myphisys_m1_test';
+appUrl.username = 'phisys_m1_test';
 appUrl.password = '';
 const app = new Pool({ connectionString: appUrl.toString() });
 const personId = uuidv7();

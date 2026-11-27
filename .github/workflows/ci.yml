@@ -1,4 +1,4 @@
-name: MyPhisys validation
+name: Phisys validation
 
 on:
   pull_request:
@@ -16,16 +16,16 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_DB: myphisys_m1
+          POSTGRES_DB: phisys_m1
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d myphisys_m1"
+          --health-cmd "pg_isready -U postgres -d phisys_m1"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/myphisys_m1
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/phisys_m1
       M1_DISPOSABLE_DB: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

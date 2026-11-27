@@ -5,7 +5,7 @@ import {
   withPerson,
   type Pool,
   type PoolClient,
-} from '@myphisys/database';
+} from '@phisys/database';
 import {
   DomainError,
   validateCanonical,
@@ -14,7 +14,7 @@ import {
   type FactKind,
   type FactValue,
   type TemporalValue,
-} from '@myphisys/health-core';
+} from '@phisys/health-core';
 
 export type SourceRecord = {
   personId: string;
