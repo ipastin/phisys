@@ -1,10 +1,10 @@
 ---
 title: "M2 — Manual sleep verification and revoke"
 created: "27-11-26 12-15-26"
-updated: "27-11-26 15-56-30"
+updated: "27-11-26 16-47-22"
 timezone: Europe/Moscow
-version: 0.1.3
-commit: "docs(plan): record stored-session verification evidence"
+version: 0.1.4
+commit: "docs(plan): record verification rollback evidence"
 status: in_progress
 ---
 
@@ -21,6 +21,11 @@ verification and one active server-owned `(issuer, subject) → personId` bindin
 with implementation, synthetic DB acceptance and a separate draft PR. The
 approval covers this slice. Step 14, merge, deploy and live provisioning have
 separate authorization. 0.5 h remains a hypothesis for separate calibration.
+
+On 27-11-26 the owner authorized the rollback correction in draft PR #18
+after [CodeRabbit review](https://github.com/ipastin/phisys/pull/18#discussion_r4719987751)
+of `6e0d51c43a16a33cde9f2d8f3e4743f3dec88f6e`. The correction covers
+migration 0003 down, a synthetic DB regression and refreshed checks.
 
 ## Context and sources
 
@@ -77,6 +82,9 @@ separate authorization. 0.5 h remains a hypothesis for separate calibration.
 4. Exercise the supported imports, verification and analytics from synthetic
    DB tests. Verify lint, format, typecheck, unit, architecture and build.
    Push the branch, open a draft PR, then verify Actions on the exact PR head.
+5. Exercise migration 0003 down as a schema owner without `BYPASSRLS`.
+   Reset the audited status before removing the audit table and restore
+   `FORCE ROW LEVEL SECURITY` on `health.fact` before commit.
 
 ## Validation and acceptance
 
@@ -105,6 +113,11 @@ Also check `git diff --check` and the PR Actions workflow.
   The fact remains unverified and an exact revoke retry adds no second event.
 - A PostgreSQL constraint forces the status write to fail after the audit
   insert. The audit row, fact status and revision roll back together.
+- Migration 0003 down completes under the synthetic schema owner without
+  `BYPASSRLS`. The audited fact becomes `unverified`. The prior verified
+  fact and both Raw origins remain. Assert that the audit table is removed,
+  `health.fact` has RLS enabled and forced, and the earlier domain and
+  analytics grants remain. The verifier's update grant is revoked as before.
 
 ## Progress and decisions
 
@@ -134,7 +147,19 @@ Also check `git diff --check` and the PR Actions workflow.
   Implementation `88e2d392974174e71e749057dc08b9fbf1a1aa87` passed lint, formatting,
   typecheck, unit and architecture tests, build, diff check and 36 DB tests
   on disposable PostgreSQL 16 from the repository root.
-- [ ] Record the latest draft head and exact-head CI in the PR description.
+- [x] [CI #90](https://github.com/ipastin/phisys/actions/runs/46003089899) passed
+  on `6e0d51c43a16a33cde9f2d8f3e4743f3dec88f6e`. CodeRabbit then found the
+  migration owner could roll back the schema while leaving an audited fact
+  `user_verified`.
+- [x] 27-11-26 16-47-22 — rollback correction `df9de20b0dfbfd5f12d4c3c11ede925f77311d14`.
+  From the repository root, the focused disposable PostgreSQL 16 regression
+  failed on the previous SQL with the audited fact still `user_verified`.
+  After the fix, `pnpm test:db` with `M1_DISPOSABLE_DB=1` on a fresh
+  disposable database passed all 37 tests. `pnpm lint`, `pnpm format:check`,
+  `pnpm typecheck`, `pnpm test` (102 unit, 19 architecture, and build),
+  and `git diff --check` passed. Local Node was `24.17.0` with pnpm `12.13.0`.
+- The exact draft head and its validation run are tracked in the
+  [PR description](https://github.com/ipastin/phisys/pull/18).
 
 Use a narrow server role and the configured Auth project over a request-supplied
 identity or a test-only authority. The role shares the fact row lock with
@@ -152,6 +177,12 @@ before evaluating the OAuth feature flag. The exact versioned
 when the OAuth server is disabled. An ordinary 404 is unavailable.
 This uses project publishable-key access and avoids privileged session-table
 access or a custom token hook.
+
+Forced RLS normally applies to the table owner. The down migration temporarily
+clears `FORCE` on the two tables its reset reads, inside the existing transaction.
+RLS stays enabled and the DDL locks last through commit. The fact table regains
+`FORCE` before the audit table is dropped. The existing grants and revocations
+remain in their original scope.
 
 The backend creates `createSleepVerificationService(pool, { projectUrl, publishableKey })`
 with a pool authorized to assume `myphisys_sleep_verifier`. It calls
@@ -175,5 +206,6 @@ upgrading or replacing its Auth configuration requires an owner decision before
 activation.
 The Auth HTTP boundary was exercised with synthetic user responses, including
 anonymous, delegated and rejected tokens. The role tests used PostgreSQL, with
-no SQL fixture assigning `user_verified`. Acceptance review of the corrected
-head remains `needs_review`.
+the verification service producing `user_verified`. The migration regression
+seeds synthetic statuses directly to exercise rollback of existing data.
+Acceptance review of the corrected head remains `needs_review`.
