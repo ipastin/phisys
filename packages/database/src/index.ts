@@ -1,10 +1,18 @@
 import { randomBytes } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
+import { withTransaction } from './transaction.js';
 
 export { Pool };
 export type { PoolClient } from 'pg';
 export { readCurrentSleepFacts } from './analytics.js';
 export type { SleepFactRow } from './analytics.js';
+export {
+  createSleepVerificationService,
+  SleepVerificationError,
+  type ManualSleepRevision,
+  type SleepVerificationRequest,
+  type SupabaseAuthConfig,
+} from './sleep-verification.js';
 
 export function uuidv7(now = Date.now(), entropy = randomBytes(10)): string {
   if (
@@ -34,25 +42,8 @@ export async function withPerson<T>(
     )
   )
     throw new Error('A UUIDv7 person identity is required');
-  const db = await pool.connect();
-  let rollbackFailure: Error | undefined;
-  try {
-    await db.query('BEGIN');
+  return withTransaction(pool, async (db) => {
     await db.query("SELECT set_config('app.person_id', $1, true)", [personId]);
-    const result = await run(db);
-    await db.query('COMMIT');
-    return result;
-  } catch (error) {
-    try {
-      await db.query('ROLLBACK');
-    } catch (rollbackError) {
-      rollbackFailure =
-        rollbackError instanceof Error
-          ? rollbackError
-          : new Error('Rollback failed', { cause: rollbackError });
-    }
-    throw error;
-  } finally {
-    db.release(rollbackFailure);
-  }
+    return run(db);
+  });
 }

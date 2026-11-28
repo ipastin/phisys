@@ -16,6 +16,26 @@ export type SleepFactRow = {
   }[];
 };
 
+// The analytics and verification readers share the active support query.
+export const activeSleepSupports = `
+SELECT jsonb_agg(jsonb_build_object(
+  'rawId', r.id, 'sourceId', s.id, 'connectorId', s.connector_id,
+  'version', r.version, 'transformation', p.transformation
+) ORDER BY r.id) AS items
+FROM health.provenance p
+JOIN source.raw_record r ON r.person_id=p.person_id AND r.id=p.raw_id
+JOIN source.record sr ON sr.person_id=r.person_id AND sr.id=r.record_id
+JOIN source.source s ON s.person_id=sr.person_id AND s.id=sr.source_id
+WHERE p.person_id=f.person_id AND p.fact_id=f.id AND r.operation='upsert'
+  AND NOT EXISTS (
+    SELECT 1 FROM source.raw_record tombstone
+    LEFT JOIN source.quarantine q
+      ON q.person_id=tombstone.person_id AND q.raw_id=tombstone.id
+    WHERE tombstone.person_id=r.person_id AND tombstone.record_id=r.record_id
+      AND tombstone.version>r.version AND tombstone.operation='delete'
+      AND q.id IS NULL
+  )`;
+
 export async function readCurrentSleepFacts(
   pool: Pool,
   personId: string,
@@ -43,25 +63,7 @@ export async function readCurrentSleepFacts(
               ) AS has_unresolved_conflict,
               COALESCE(support.items, '[]'::jsonb) AS supports
        FROM health.fact f
-       LEFT JOIN LATERAL (
-         SELECT jsonb_agg(jsonb_build_object(
-           'rawId', r.id, 'sourceId', s.id, 'connectorId', s.connector_id,
-           'version', r.version, 'transformation', p.transformation
-         ) ORDER BY r.id) AS items
-         FROM health.provenance p
-         JOIN source.raw_record r ON r.person_id=p.person_id AND r.id=p.raw_id
-         JOIN source.record sr ON sr.person_id=r.person_id AND sr.id=r.record_id
-         JOIN source.source s ON s.person_id=sr.person_id AND s.id=sr.source_id
-         WHERE p.person_id=f.person_id AND p.fact_id=f.id AND r.operation='upsert'
-           AND NOT EXISTS (
-             SELECT 1 FROM source.raw_record tombstone
-             LEFT JOIN source.quarantine q
-               ON q.person_id=tombstone.person_id AND q.raw_id=tombstone.id
-             WHERE tombstone.person_id=r.person_id AND tombstone.record_id=r.record_id
-               AND tombstone.version>r.version AND tombstone.operation='delete'
-               AND q.id IS NULL
-           )
-       ) support ON true
+       LEFT JOIN LATERAL (${activeSleepSupports}) support ON true
        WHERE f.person_id=$1 AND f.concept_id='sleep_duration' AND f.state='current'
          AND f.effective->>'kind'='local_date'
          AND f.effective->>'value'>=$2 AND f.effective->>'value'<$3

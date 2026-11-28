@@ -1,6 +1,13 @@
-import { afterAll, beforeAll, expect, test } from 'vitest';
-import { Pool, readCurrentSleepFacts, uuidv7 } from '@myphisys/database';
+import { randomUUID } from 'node:crypto';
+import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
+import {
+  createSleepVerificationService,
+  Pool,
+  readCurrentSleepFacts,
+  uuidv7,
+} from '@myphisys/database';
 import { ingest } from '@myphisys/ingestion';
+import { manualRecords } from '../../connectors/src/index.js';
 import { goldenRecords } from '../../ingestion/test/golden.js';
 import {
   sleepBaselineTrend,
@@ -23,8 +30,12 @@ writerUrl.password = '';
 const readerUrl = new URL(process.env.DATABASE_URL);
 readerUrl.username = 'myphisys_m2_reader';
 readerUrl.password = '';
+const verifierUrl = new URL(process.env.DATABASE_URL);
+verifierUrl.username = 'myphisys_m2_verifier';
+verifierUrl.password = '';
 const writer = new Pool({ connectionString: writerUrl.toString() });
 const reader = new Pool({ connectionString: readerUrl.toString() });
+const verifier = new Pool({ connectionString: verifierUrl.toString() });
 const personA = uuidv7();
 const personB = uuidv7();
 const personC = uuidv7();
@@ -42,6 +53,10 @@ beforeAll(async () => {
   );
   await admin.query('GRANT myphisys_domain TO myphisys_m2_writer');
   await admin.query('GRANT myphisys_analytics TO myphisys_m2_reader');
+  await admin.query(
+    "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='myphisys_m2_verifier') THEN CREATE ROLE myphisys_m2_verifier LOGIN; END IF; END $$",
+  );
+  await admin.query('GRANT myphisys_sleep_verifier TO myphisys_m2_verifier');
   await admin.query(
     'INSERT INTO identity.person(id) VALUES ($1),($2),($3),($4)',
     [personA, personB, personC, personD],
@@ -109,8 +124,596 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await Promise.all([reader.end(), writer.end(), admin.end()]);
+  await Promise.all([reader.end(), writer.end(), verifier.end(), admin.end()]);
 });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+const verificationConfig = {
+  projectUrl: 'https://verification.example',
+  publishableKey: 'sb_publishable_fixture',
+};
+const verificationIssuer = `${verificationConfig.projectUrl}/auth/v1`;
+const verificationService = createSleepVerificationService(
+  verifier,
+  verificationConfig,
+);
+function syntheticToken(
+  claims: { sub: string; client_id?: string; session_id?: string | null },
+  marker = 'fixture',
+) {
+  const payload = Buffer.from(
+    JSON.stringify({ session_id: randomUUID(), ...claims }),
+  ).toString('base64url');
+  return `synthetic.${payload}.${marker}`;
+}
+
+async function verificationOwner() {
+  const personId = uuidv7();
+  const subject = randomUUID();
+  await admin.query('INSERT INTO identity.person(id) VALUES ($1)', [personId]);
+  await admin.query(
+    'INSERT INTO identity.person_owner(issuer,subject,person_id) VALUES ($1,$2,$3)',
+    [verificationIssuer, subject, personId],
+  );
+  return { personId, subject, token: syntheticToken({ sub: subject }) };
+}
+
+function syntheticSupabase(
+  subjects: ReadonlyMap<string, string>,
+  options: {
+    beforeProfile?: (token: string) => Promise<void>;
+    authVersion?: string;
+    sessionResponse?: (token: string) => Response;
+  } = {},
+) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof fetch>(async (url, request) => {
+      expect(request?.redirect).toBe('error');
+      expect(request?.cache).toBe('no-store');
+      const headers = new Headers(request?.headers);
+      expect(headers.get('apikey')).toBe(verificationConfig.publishableKey);
+      expect(headers.get('x-supabase-api-version')).toBe('2024-01-01');
+      if (url === `${verificationIssuer}/health`) {
+        expect(headers.has('authorization')).toBe(false);
+        return Response.json({ version: options.authVersion ?? 'v2.198.0' });
+      }
+      const token = headers.get('authorization')?.slice('Bearer '.length) ?? '';
+      const id = subjects.get(token);
+      if (!id) return new Response(null, { status: 401 });
+      if (url === `${verificationIssuer}/user/oauth/grants`)
+        return (
+          options.sessionResponse?.(token) ??
+          Response.json(
+            { code: 'feature_disabled', message: 'OAuth server is disabled' },
+            { status: 404 },
+          )
+        );
+      expect(url).toBe(`${verificationIssuer}/user`);
+      await options.beforeProfile?.(token);
+      return Response.json({
+        id,
+        role: 'authenticated',
+        is_anonymous: token.endsWith('.anonymous'),
+      });
+    }),
+  );
+}
+
+function manualNight(
+  personId: string,
+  date: string,
+  value: number,
+  version = 1,
+) {
+  return manualRecords({
+    personId,
+    type: 'observation',
+    conceptId: 'sleep_duration',
+    value,
+    unit: 'h',
+    version,
+    externalRecordId: date,
+    eventKey: `manual-sleep:${date}`,
+    recordedAt: `${date}T12:00:00.000Z`,
+    effective: { kind: 'local_date', value: date },
+  })[0]!;
+}
+
+async function importManualNight(record: ReturnType<typeof manualNight>) {
+  const result = await ingest(writer, record);
+  if (result.state !== 'imported' || !result.factId)
+    throw new Error('Synthetic Manual sleep fact was not imported');
+  return result.factId;
+}
+
+test('DB Manual verification resolves an active verified owner and serializes retries and revoke', async () => {
+  const a = await verificationOwner();
+  const b = await verificationOwner();
+  const anonymous = syntheticToken({ sub: a.subject }, 'anonymous');
+  const unboundSubject = randomUUID();
+  const unbound = syntheticToken({ sub: unboundSubject });
+  syntheticSupabase(
+    new Map([
+      [a.token, a.subject],
+      [b.token, b.subject],
+      [anonymous, a.subject],
+      [unbound, unboundSubject],
+    ]),
+  );
+  const factId = await importManualNight(
+    manualNight(a.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(a.token, factId);
+  expect(preview).toMatchObject({
+    value: { canonicalValue: 8, canonicalUnit: 'h' },
+    effective: { kind: 'local_date', value: '2026-01-01' },
+    verification: 'unverified',
+    supports: [{ connectorId: 'manual', version: 1 }],
+  });
+
+  const suppliedOwner = {
+    ...preview,
+    personId: a.personId,
+    actorId: a.subject,
+  };
+  await expect(
+    verificationService.confirm(b.token, suppliedOwner),
+  ).rejects.toMatchObject({ code: 'revision_unavailable' });
+  await expect(
+    verificationService.confirm('synthetic.fixture.rejected', preview),
+  ).rejects.toMatchObject({ code: 'authentication_required' });
+  await expect(
+    verificationService.confirm(anonymous, preview),
+  ).rejects.toMatchObject({ code: 'authentication_required' });
+  await expect(
+    verificationService.confirm(unbound, preview),
+  ).rejects.toMatchObject({ code: 'owner_binding_unavailable' });
+
+  // The DB role cannot change even its own link or read payload.
+  const db = await verifier.connect();
+  try {
+    await db.query('BEGIN');
+    await db.query('SET LOCAL ROLE myphisys_sleep_verifier');
+    await db.query(
+      "SELECT set_config('app.verification_issuer',$1,true), set_config('app.verification_subject',$2,true)",
+      [verificationIssuer, a.subject],
+    );
+    expect(
+      (await db.query('SELECT person_id FROM identity.person_owner')).rows,
+    ).toEqual([{ person_id: a.personId }]);
+    expect(
+      (
+        await db.query(
+          "SELECT has_column_privilege(current_user, 'source.raw_record', 'payload', 'SELECT') AS allowed",
+        )
+      ).rows[0]?.allowed,
+    ).toBe(false);
+    await expect(
+      db.query(
+        'UPDATE identity.person_owner SET disabled_at=clock_timestamp()',
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+  } finally {
+    await db.query('ROLLBACK');
+    db.release();
+  }
+  const sameConfirmation = await Promise.all([
+    verificationService.confirm(a.token, preview),
+    verificationService.confirm(a.token, preview),
+  ]);
+  expect(sameConfirmation).toEqual([
+    { verification: 'user_verified' },
+    { verification: 'user_verified' },
+  ]);
+  const confirmed = await verificationService.getRevision(a.token, factId);
+  await expect(
+    verificationService.revoke(b.token, confirmed),
+  ).rejects.toMatchObject({ code: 'revision_unavailable' });
+  await expect(verificationService.revoke(a.token, confirmed)).resolves.toEqual(
+    { verification: 'unverified' },
+  );
+  await expect(verificationService.revoke(a.token, confirmed)).resolves.toEqual(
+    { verification: 'unverified' },
+  );
+  await expect(
+    verificationService.confirm(a.token, preview),
+  ).rejects.toMatchObject({ code: 'stale_revision' });
+  const revoked = await verificationService.getRevision(a.token, factId);
+  await admin.query(
+    'UPDATE identity.person_owner SET disabled_at=clock_timestamp() WHERE person_id=$1',
+    [a.personId],
+  );
+  for (const action of [
+    verificationService.confirm,
+    verificationService.revoke,
+  ])
+    await expect(action(a.token, revoked)).rejects.toMatchObject({
+      code: 'owner_binding_unavailable',
+    });
+  expect(
+    (
+      await admin.query(
+        `SELECT action, issuer, subject, supports, policy_version FROM health.sleep_verification_event
+     WHERE person_id=$1 ORDER BY from_revision`,
+        [a.personId],
+      )
+    ).rows,
+  ).toEqual(
+    ['confirm', 'revoke'].map((action) => ({
+      action,
+      issuer: verificationIssuer,
+      subject: a.subject,
+      supports: preview.supports,
+      policy_version: 'manual-sleep-verification-v1',
+    })),
+  );
+});
+
+test('DB Manual verification rejects a delegated token before opening a DB connection', async () => {
+  const owner = await verificationOwner();
+  const delegated = syntheticToken({
+    sub: owner.subject,
+    client_id: randomUUID(),
+  });
+  const mismatched = syntheticToken({ sub: randomUUID() });
+  syntheticSupabase(
+    new Map([
+      [owner.token, owner.subject],
+      [delegated, owner.subject],
+      [mismatched, owner.subject],
+    ]),
+  );
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  const connect = vi.spyOn(verifier, 'connect');
+
+  await expect(
+    verificationService.getRevision(delegated, factId),
+  ).rejects.toMatchObject({ code: 'authentication_required' });
+  for (const action of [
+    verificationService.confirm,
+    verificationService.revoke,
+  ]) {
+    for (const token of [delegated, mismatched])
+      await expect(action(token, preview)).rejects.toMatchObject({
+        code: 'authentication_required',
+      });
+  }
+  expect(connect).not.toHaveBeenCalled();
+});
+
+test('DB Manual verification checks the stored session when the token omits client_id', async () => {
+  const owner = await verificationOwner();
+  const oauthSession = syntheticToken({ sub: owner.subject });
+  const noSession = syntheticToken({ sub: owner.subject, session_id: null });
+  const sessionResponse = vi.fn((token: string) =>
+    token === oauthSession
+      ? new Response(null, { status: 403 })
+      : Response.json([]),
+  );
+  syntheticSupabase(
+    new Map([
+      [owner.token, owner.subject],
+      [oauthSession, owner.subject],
+      [noSession, owner.subject],
+    ]),
+    { sessionResponse },
+  );
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  const connect = vi.spyOn(verifier, 'connect');
+  await expect(
+    verificationService.getRevision(oauthSession, factId),
+  ).rejects.toMatchObject({ code: 'authentication_required' });
+  for (const decide of [
+    verificationService.confirm,
+    verificationService.revoke,
+  ]) {
+    await expect(decide(oauthSession, preview)).rejects.toMatchObject({
+      code: 'authentication_required',
+    });
+    await expect(decide(noSession, preview)).rejects.toMatchObject({
+      code: 'authentication_required',
+    });
+  }
+  expect(sessionResponse.mock.calls).toEqual([
+    [owner.token],
+    [oauthSession],
+    [oauthSession],
+    [oauthSession],
+  ]);
+  expect(connect).not.toHaveBeenCalled();
+});
+
+test('DB Manual verification fails closed without a supported Supabase session verdict', async () => {
+  const owner = await verificationOwner();
+  const subjects = new Map([[owner.token, owner.subject]]);
+  syntheticSupabase(subjects);
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  const connect = vi.spyOn(verifier, 'connect');
+
+  const oldServerVerdict = vi.fn(() => Response.json([]));
+  syntheticSupabase(subjects, {
+    authVersion: 'v2.197.9',
+    sessionResponse: oldServerVerdict,
+  });
+  await expect(
+    verificationService.confirm(owner.token, preview),
+  ).rejects.toMatchObject({ code: 'authentication_unavailable' });
+  expect(oldServerVerdict).not.toHaveBeenCalled();
+  syntheticSupabase(subjects, {
+    sessionResponse: () =>
+      Response.json({ code: 'not_found' }, { status: 404 }),
+  });
+  await expect(
+    verificationService.confirm(owner.token, preview),
+  ).rejects.toMatchObject({ code: 'authentication_unavailable' });
+  expect(connect).not.toHaveBeenCalled();
+});
+
+test('DB Manual revoke closes an unverified revision before a pending confirm arrives', async () => {
+  const owner = await verificationOwner();
+  const delayedToken = syntheticToken({ sub: owner.subject }, 'delayed');
+  const entered = Promise.withResolvers<void>();
+  const resume = Promise.withResolvers<void>();
+  syntheticSupabase(
+    new Map([
+      [owner.token, owner.subject],
+      [delayedToken, owner.subject],
+    ]),
+    {
+      beforeProfile: async (token) => {
+        if (token === delayedToken) {
+          entered.resolve();
+          await resume.promise;
+        }
+      },
+    },
+  );
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  expect(preview.verification).toBe('unverified');
+  const pending = Promise.allSettled([
+    verificationService.confirm(delayedToken, preview),
+  ]);
+  await entered.promise;
+  try {
+    await expect(
+      verificationService.revoke(owner.token, preview),
+    ).resolves.toEqual({ verification: 'unverified' });
+  } finally {
+    resume.resolve();
+  }
+  expect(await pending).toMatchObject([
+    { status: 'rejected', reason: { code: 'stale_revision' } },
+  ]);
+  await expect(
+    verificationService.revoke(owner.token, preview),
+  ).resolves.toEqual({ verification: 'unverified' });
+  const current = await verificationService.getRevision(owner.token, factId);
+  expect(current.verification).toBe('unverified');
+  expect(current.revision).not.toBe(preview.revision);
+  expect(
+    (
+      await admin.query(
+        `SELECT action, revision_fingerprint FROM health.sleep_verification_event
+     WHERE person_id=$1 AND fact_id=$2`,
+        [owner.personId, factId],
+      )
+    ).rows,
+  ).toEqual([{ action: 'revoke', revision_fingerprint: preview.revision }]);
+});
+
+test('DB Manual verification rolls back audit and status when the status update fails', async () => {
+  const owner = await verificationOwner();
+  syntheticSupabase(new Map([[owner.token, owner.subject]]));
+  const factId = await importManualNight(
+    manualNight(owner.personId, '2026-01-01', 8),
+  );
+  const preview = await verificationService.getRevision(owner.token, factId);
+  await admin.query(
+    `ALTER TABLE health.fact ADD CONSTRAINT test_verification_update_failure
+     CHECK (id <> '${factId}'::uuid OR verification_revision = 0) NOT VALID`,
+  );
+  try {
+    await expect(
+      verificationService.confirm(owner.token, preview),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'test_verification_update_failure',
+    });
+    expect(
+      (
+        await admin.query(
+          'SELECT 1 FROM health.sleep_verification_event WHERE person_id=$1 AND fact_id=$2',
+          [owner.personId, factId],
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(await verificationService.getRevision(owner.token, factId)).toEqual(
+      preview,
+    );
+  } finally {
+    await admin.query(
+      'ALTER TABLE health.fact DROP CONSTRAINT test_verification_update_failure',
+    );
+  }
+  await expect(
+    verificationService.confirm(owner.token, preview),
+  ).resolves.toEqual({ verification: 'user_verified' });
+});
+
+test('DB Manual verification invalidates a stale preview when Raw support changes or returns', async () => {
+  const owner = await verificationOwner();
+  syntheticSupabase(new Map([[owner.token, owner.subject]]));
+  const record = manualNight(owner.personId, '2026-01-01', 8);
+  const factId = await importManualNight(record);
+  const preview = await verificationService.getRevision(owner.token, factId);
+  const extra = { ...record, externalRecordId: 'other-manual-record' };
+  const [added, confirmation] = await Promise.allSettled([
+    ingest(writer, extra),
+    verificationService.confirm(owner.token, preview),
+  ]);
+  expect(added).toMatchObject({
+    status: 'fulfilled',
+    value: { state: 'duplicate' },
+  });
+  if (confirmation.status === 'rejected')
+    expect(confirmation.reason).toMatchObject({ code: 'stale_revision' });
+  const withExtra = await verificationService.getRevision(owner.token, factId);
+  expect(withExtra.verification).toBe('unverified');
+  expect(withExtra.supports).toHaveLength(2);
+  await verificationService.confirm(owner.token, withExtra);
+  await ingest(writer, {
+    ...extra,
+    version: 2,
+    operation: 'delete',
+    payload: {},
+  });
+  const remaining = await verificationService.getRevision(owner.token, factId);
+  expect(remaining).toMatchObject({
+    supports: preview.supports,
+    verification: 'unverified',
+  });
+  await expect(
+    verificationService.confirm(owner.token, preview),
+  ).rejects.toMatchObject({ code: 'stale_revision' });
+  await expect(
+    verificationService.confirm(owner.token, withExtra),
+  ).rejects.toMatchObject({ code: 'stale_revision' });
+  await expect(
+    verificationService.confirm(owner.token, remaining),
+  ).resolves.toEqual({ verification: 'user_verified' });
+
+  const external = await importManualNight({
+    ...manualNight(owner.personId, '2026-01-02', 8),
+    connectorId: 'synthetic-external',
+  });
+  await expect(
+    verificationService.getRevision(owner.token, external),
+  ).rejects.toMatchObject({ code: 'revision_unavailable' });
+});
+
+test('DB Manual verification moves a complete sleep series to sufficient and corrections preserve held', async () => {
+  const owner = await verificationOwner();
+  syntheticSupabase(new Map([[owner.token, owner.subject]]));
+  const request = {
+    startDate: '2026-01-29',
+    endDateExclusive: '2026-02-05',
+    asOfDate: '2026-02-05',
+  };
+  const factIds = [];
+  for (let day = 1; day <= 35; day++) {
+    const date = new Date(Date.UTC(2026, 0, day)).toISOString().slice(0, 10);
+    factIds.push(
+      await importManualNight(
+        manualNight(owner.personId, date, day >= 29 && day <= 32 ? 7 : 8),
+      ),
+    );
+  }
+  expect(
+    await sleepMeaningfulness(reader, owner.personId, request),
+  ).toMatchObject({
+    status: 'held',
+    diff: {
+      status: 'numeric_changed',
+      deltaHours: -1,
+      qualityStatus: 'limited',
+    },
+    persistence: {
+      status: 'unavailable',
+      reasonCode: 'persistence_quality_blocked',
+    },
+  });
+  for (const factId of factIds) {
+    const revision = await verificationService.getRevision(owner.token, factId);
+    await verificationService.confirm(owner.token, revision);
+  }
+  const connect = vi.spyOn(reader, 'connect');
+  const verified = await sleepMeaningfulness(reader, owner.personId, request);
+  expect(connect).toHaveBeenCalledTimes(1);
+  connect.mockRestore();
+  expect(verified).toMatchObject({
+    status: 'held',
+    knowledgeAsOf: 'unavailable',
+    diff: {
+      status: 'numeric_changed',
+      deltaHours: -1,
+      qualityStatus: 'sufficient',
+      calculatedAt: verified.calculatedAt,
+    },
+    baselineEvidence: {
+      result: { status: 'sufficient', calculatedAt: verified.calculatedAt },
+    },
+    persistence: {
+      status: 'pattern_observed',
+      calculatedAt: verified.calculatedAt,
+    },
+  });
+  const verifiedQuality = verified.baselineEvidence.result.quality.combined;
+  expect(verifiedQuality.provenance.factIds).toEqual([...factIds].sort());
+  expect(
+    verifiedQuality.provenance.factSupports.every(
+      ({ supports }) =>
+        supports.length === 1 &&
+        supports[0]?.connectorId === 'manual' &&
+        !!supports[0].sourceId,
+    ),
+  ).toBe(true);
+
+  const old = await verificationService.getRevision(owner.token, factIds[29]!);
+  const corrected = await importManualNight(
+    manualNight(owner.personId, '2026-01-30', 8, 2),
+  );
+  await expect(
+    verificationService.confirm(owner.token, old),
+  ).rejects.toMatchObject({ code: 'revision_unavailable' });
+  const newRevision = await verificationService.getRevision(
+    owner.token,
+    corrected,
+  );
+  expect(newRevision.verification).toBe('unverified');
+  await expect(
+    verificationService.confirm(owner.token, {
+      factId: corrected,
+      revision: old.revision,
+    }),
+  ).rejects.toMatchObject({ code: 'stale_revision' });
+  await verificationService.confirm(owner.token, newRevision);
+  expect(
+    await sleepMeaningfulness(reader, owner.personId, request),
+  ).toMatchObject({
+    status: 'held',
+    diff: { status: 'unchanged', deltaHours: 0, qualityStatus: 'sufficient' },
+    persistence: { status: 'pattern_not_observed' },
+  });
+  const current = await verificationService.getRevision(owner.token, corrected);
+  await verificationService.revoke(owner.token, current);
+  expect(
+    await sleepMeaningfulness(reader, owner.personId, request),
+  ).toMatchObject({
+    status: 'held',
+    diff: { status: 'unchanged', deltaHours: 0, qualityStatus: 'limited' },
+    persistence: {
+      status: 'unavailable',
+      reasonCode: 'persistence_quality_blocked',
+    },
+  });
+}, 60_000);
 
 test('DB adjacent weeks compare person-scoped medians and preserve Raw lineage', async () => {
   const period: QualityWindow = {
